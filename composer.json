@@ -1,5 +1,6 @@
 {
     "name": "joelsonb/monitolib",
+    "minimum-stability": "dev",
     "description": "PHP scripts for api development",
     "homepage": "http://gitlab.com/joelsonb/monitolib",
     "authors": [
