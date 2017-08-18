@@ -1,37 +1,26 @@
 {
-    "name": "joelsonb/monitofeo",
+    "name": "joelsonb/monitolib",
     "type": "library",
-    "description": "Command line arguments parser for PHP 5.4 - 7.1",
-    "homepage": "http://ulrichsg.github.io/getopt-php",
+    "description": "PHP scripts for api development",
+    "homepage": "http://gitlab.com/joelsonb/monitolib",
     "license": "MIT",
     "authors": [
         {
-            "name": "Ulrich Schmidt-Goertz",
-            "email": "ulrich@schmidt-goertz.de"
-        },
-        {
-            "name": "Thomas Flori",
-            "email": "thflori@gmail.com"
+            "name": "Joelson B",
+            "email": "joelsonb@msn.com"
         }
     ],
     "require": {
         "php": ">=5.4.0"
     },
-    "require-dev": {
-        "phpunit/phpunit": "^4.8",
-        "squizlabs/php_codesniffer": "^2.7"
-    },
     "autoload": {
         "psr-4": {
-            "MonitoFeo\\": "src"
+            "MonitoLib\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "GetOpt\\Test\\": "test"
+            "MonitoLib\\Test\\": "test"
         }
-    },
-    "scripts": {
-        "code-style": "phpcs --standard=PSR2 src && phpcs --standard=PSR2 test"
     }
 }
