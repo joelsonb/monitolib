@@ -1,5 +1,5 @@
 <?php
-namespace MonitoFeo\cli\Commands;
+namespace MonitoLib\cli\Commands;
 
 class Create
 {

@@ -1,5 +1,5 @@
 <?php
-namespace MonitoFeo\cli;
+namespace MonitoLib\cli;
 
 class Command
 {

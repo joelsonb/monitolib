@@ -1,9 +1,7 @@
 {
     "name": "joelsonb/monitolib",
-    "type": "library",
     "description": "PHP scripts for api development",
     "homepage": "http://gitlab.com/joelsonb/monitolib",
-    "license": "MIT",
     "authors": [
         {
             "name": "Joelson B",
@@ -16,11 +14,6 @@
     "autoload": {
         "psr-4": {
             "MonitoLib\\": "src"
-        }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "MonitoLib\\Test\\": "test"
         }
     }
 }
