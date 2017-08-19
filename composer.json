@@ -1,7 +1,7 @@
 {
     "name": "joelsonb/monitolib",
     "minimum-stability": "dev",
-    "description": "PHP scripts for api development",
+    "description": "Monitocli - just a personal project",
     "homepage": "http://gitlab.com/joelsonb/monitolib",
     "authors": [
         {
@@ -11,8 +11,11 @@
     ],
     "license": "BSD-3-Clause",
     "require": {
+        "php": ">=5.4.0"
+    },
+    "require-dev": {
         "php": ">=5.4.0",
-        "ulrichsg/getopt-php": "^3.0.0-beta.1"
+        "joelson/monitocli": "dev-master"
     },
     "autoload": {
         "psr-4": {

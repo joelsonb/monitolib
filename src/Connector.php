@@ -1,21 +1,20 @@
 <?php 
 /**
  * Database connector
- * @author Joelson Batista <joelsonb@msn.com>
+ * @author Joelson B <joelsonb@msn.com>
  * @since 2013-12-10
  * @copyright Copyright &copy; 2009 - 2017
  *  
- * @package Lib
+ * @package MonitoLib
  */
-namespace vendor\ldm;
+namespace MonitoLib;
 
 class Connector
 {
 	private static $instance;
 
-	// Array de conexões do sistema
 	private $connection;
-	private $connections = array();
+	private $connections = [];
 	private $dbms;
 
 	private function __construct()
@@ -85,7 +84,7 @@ class Connector
 	{
 		if (!isset(self::$instance))
 		{
-			self::$instance = new \vendor\ldm\Connector;
+			self::$instance = new \MonitoLib\Connector;
 		}
 
 		return self::$instance;
@@ -120,9 +119,6 @@ class Connector
 
 		if (is_null($this->connection) and is_null($conn))
 		{
-			// $dbt = debug_backtrace();
-			//\lib\dm\Dev::pre($dbt);
-			
 			throw new \Exception('There is no default connection!');
 		}
 
