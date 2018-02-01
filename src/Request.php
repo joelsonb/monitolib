@@ -3,12 +3,13 @@
  * 1.0.0. - 2017-06-26
  * Inicial release
  */
-namespace vendor\ldm;
+namespace MonitoLib;
 
 class Request
 {
 	static private $instance;
 
+	private $json = [];
 	private $queryString = [];
 	private $requestUri;
 	private $post;
@@ -19,29 +20,34 @@ class Request
 	}
 	public static function getInstance ()
 	{
-		if (is_null(self::$instance))
-		{
-			return new \vendor\ldm\Request;
-		}
-		else
-		{
+		if (is_null(self::$instance)) {
+			return new \MonitoLib\Request;
+		} else {
 			return self::$instance;
 		}
 	}
+	public function getJson ($asArray = false)
+	{
+		$this->json = json_decode(file_get_contents('php://input'), $asArray);
+		
+		// if (is_null($key)) {
+			return $this->json;
+		// } else {
+		// 	if (isset($this->json[$key])) {
+		// 		return $this->json[$key];
+		// 	} else {
+		// 		return null;
+		// 	}
+		// }
+	}
 	public function getQueryString ($key = null)
 	{
-		if (is_null($key))
-		{
+		if (is_null($key)) {
 			return $this->queryString;
-		}
-		else
-		{
-			if (isset($this->queryString[$key]))
-			{
+		} else {
+			if (isset($this->queryString[$key])) {
 				return $this->queryString[$key];
-			}
-			else
-			{
+			} else {
 				return null;
 			}
 		}
@@ -54,16 +60,12 @@ class Request
 	{
 		$fields = explode('&', $queryString);
 
-		foreach ($fields as $field)
-		{
+		foreach ($fields as $field) {
 			$f = explode('=', $field);
 
-			if (substr($f[0], -2) == '[]')
-			{
+			if (substr($f[0], -2) == '[]') {
 				$this->queryString[substr($f[0], 0, -2)][] = $f[1];
-			}
-			else
-			{
+			} else {
 				$this->queryString[$f[0]] = $f[1];
 			}
 		}		

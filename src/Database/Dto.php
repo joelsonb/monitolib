@@ -1,5 +1,5 @@
 <?php
-namespace vendor\ldm\Database;
+namespace MonitoLib\Database;
 
 class Dto
 {
@@ -19,8 +19,7 @@ class Dto
 
 		$this->data = $array;
 
-		if (!file_exists(JL_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php"))
-		{
+		if (!file_exists(JL_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php")) {
 			$this->createDto($this->keys);
 		}
 	}
@@ -41,9 +40,8 @@ class Dto
 		$get = '';
 		$set = '';
 
-		foreach ($array as $f)
-		{
-			$f = \vendor\ldm\Functions::toLowerCamelCase($f);
+		foreach ($array as $f) {
+			$f = \MonitoLib\Functions::toLowerCamelCase(strtolower($f));
 			$g = 'get' . ucfirst($f);
 			$s = 'set' . ucfirst($f);
 
@@ -75,8 +73,7 @@ class Dto
 
 		$output .= $prp . $get . $set . "}";
 
-		if (!@file_put_contents(JL_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php", $output))
-		{
+		if (!@file_put_contents(JL_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php", $output)) {
 			throw new \Exception("Error while saving cache data!");
 		}
 	}
@@ -84,17 +81,14 @@ class Dto
 	{
 		$dto = "\cache\\dto{$this->crc}";
 
-		if (isset($this->data[0]) && is_array($this->data[0]))
-		{
+		if (isset($this->data[0]) && is_array($this->data[0])) {
 			$data = [];
 
-			foreach ($this->data as $res)
-			{
+			foreach ($this->data as $res) {
 				$dto = new $dto;
 
-				foreach ($res as $k => $v)
-				{
-					$set = 'set' . ucfirst(\vendor\ldm\Functions::toLowerCamelCase($k));
+				foreach ($res as $k => $v) {
+					$set = 'set' . ucfirst(\MonitoLib\Functions::toLowerCamelCase($k));
 					$dto->$set($v);
 				}
 

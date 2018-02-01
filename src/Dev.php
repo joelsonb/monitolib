@@ -9,10 +9,13 @@
  * 
  * @package \jLib\lib
  */
-namespace vendor\ldm;
+namespace MonitoLib;
 
 class Dev
 {
+	private static function isCli () {
+		return PHP_SAPI == 'cli' ? true : false;
+	}
 	public static function e ($s = 'exited')
 	{
 		echo $s;
@@ -20,15 +23,13 @@ class Dev
 	}
 	public static function pr ($a, $e = false)
 	{
-		echo '<pre>';print_r($a);
+		echo self::isCli() ? '' : '<pre>';
+		print_r($a);
 	
-		if ($e)
-		{
+		if ($e) {
 			exit;
-		}
-		else
-		{
-			echo '</pre>';
+		} else {
+			echo self::isCli() ? "\n" : '</pre>';
 		}
 	}
 	public static function pre ($a)
@@ -37,15 +38,13 @@ class Dev
 	}
 	public static function vd ($a, $e = false)
 	{
-		echo '<pre>';var_dump($a);
+		echo self::isCli() ? '' : '<pre>';
+		var_dump($a);
 	
-		if ($e)
-		{
+		if ($e) {
 			exit;
-		}
-		else
-		{
-			echo '</pre>';
+		} else {
+			echo self::isCli() ? "\n" : '</pre>';
 		}
 	}
 	public static function vde ($a)

@@ -1,5 +1,5 @@
 <?php
-namespace vendor\ldm;
+namespace MonitoLib;
 
 class Functions
 {

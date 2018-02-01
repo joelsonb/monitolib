@@ -1,5 +1,5 @@
 <?php
-namespace vendor\ldm;
+namespace MonitoLib;
 
 class Filter
 {
@@ -11,6 +11,7 @@ class Filter
 	private $criteria;
 	private $countCriteria;
 	private $fixedCriteria;
+	private $fields;
 
 	private $dbms        = 1;
 	private $page        = 1;
@@ -102,6 +103,40 @@ class Filter
 
 		return $this;
 	}
+	public function startGroup ($fixed = false)
+	{
+		$sql = '(';
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
+	public function endGroup ($fixed = false)
+	{
+
+		// echo $this->criteria;
+		// exit;
+
+
+		// if ($p = preg_match('/(AND|OR)$/', $this->criteria)) {
+		// 	\MonitoLib\Dev::pre($p);
+		// }
+
+
+		$sql = ')';
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
 	public function andEqual ($field, $value, $fixed = false)
 	{
 		$sql = "$field = '$value' AND ";
@@ -110,6 +145,50 @@ class Filter
 
 		if ($fixed)
 		{
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
+	public function andEqualOrNull ($field, $value, $fixed = false)
+	{
+		if (is_null($value)) {
+			return $this->andIsNull($field, $fixed);
+		}
+
+		$sql = "$field = '$value' AND ";
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
+	public function andEqualOrNullRaw ($field, $value, $fixed = false)
+	{
+		if (is_null($value)) {
+			return $this->andIsNull($field, $fixed);
+		}
+
+		$sql = "$field = $value AND ";
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
+	public function andEqualRaw ($field, $value, $fixed = false)
+	{
+		$sql = "$field = $value AND ";
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
 			$this->fixedCriteria .= $sql;
 		}
 
@@ -170,8 +249,21 @@ class Filter
 
 		$this->criteria .= $sql;
 
-		if ($fixed)
-		{
+		if ($fixed) {
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
+	public function andLessEqualRaw ($field, $value, $fixed = false)
+	{
+		$sql = "$field <= $value";
+
+		$sql .= ' AND ';
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
 			$this->fixedCriteria .= $sql;
 		}
 
@@ -183,8 +275,31 @@ class Filter
 
 		$this->criteria .= $sql;
 
-		if ($fixed)
-		{
+		if ($fixed) {
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
+	public function orNotEqual ($field, $value, $fixed = false)
+	{
+		$sql = "$field <> '$value' OR ";
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
+	public function orNotEqualRaw ($field, $value, $fixed = false)
+	{
+		$sql = "$field <> $value OR ";
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
 			$this->fixedCriteria .= $sql;
 		}
 
@@ -226,8 +341,19 @@ class Filter
 
 		$this->criteria .= $sql;
 
-		if ($fixed)
-		{
+		if ($fixed) {
+			$this->fixedCriteria .= $sql;
+		}
+
+		return $this;
+	}
+	public function andNotEqualRaw ($field, $value, $fixed = false)
+	{
+		$sql = "$field <> $value AND ";
+
+		$this->criteria .= $sql;
+
+		if ($fixed) {
 			$this->fixedCriteria .= $sql;
 		}
 
@@ -569,26 +695,33 @@ class Filter
 	{
 		$sql = '';
 
-		if (!is_null($this->criteria))
-		{
-			$sql .= ' WHERE ' . substr($this->criteria, 0, -4);
+		if (!is_null($this->criteria)) {
+			$sql .= ' WHERE ' . $this->criteria;//substr($this->criteria, 0, -4);
+
+			if (preg_match('/\s(AND|OR)\s\)?$/', $sql, $m)) {
+				$matched = $m[0];
+				$length = strlen($matched);
+				$sql = substr($sql, 0, -$length);
+
+				if (substr($matched, -1, 1) == ')') {
+					$sql .= ')';
+				}
+
+				// \MonitoLib\Dev::pre($m);
+			}
 		}
-		if (count($this->sort) > 0)
-		{
+		if (count($this->sort) > 0) {
 			$sql .=  ' ORDER BY ';
 
-			foreach ($this->sort as $sk => $sv)
-			{
+			foreach ($this->sort as $sk => $sv) {
 				$sql .= $sk . ' ' . $sv . ', ';
 			}
 
 			$sql = substr($sql, 0, -2);
 		}
 	
-		if ($this->dbms == 1)
-		{
-			if ($this->limitOffset > 0)
-			{
+		if ($this->dbms == 1) {
+			if ($this->limitOffset > 0) {
 				$this->limitStart = ($this->page - 1) * $this->limitOffset;
 				$sql .= ' LIMIT ' . $this->limitStart . ',' . $this->limitOffset;
 			}
@@ -749,5 +882,11 @@ class Filter
 	public function setValue ($value)
 	{
 		$this->value = $value;
+	}
+	public function setFields ($fields) {
+		$this->fields = $fields;
+	}
+	public function getFields () {
+		return $this->fields;
 	}
 }

@@ -1,5 +1,5 @@
 <?php
-namespace Lib\Database\Oracle;
+namespace MonitoLib\Database\Oracle;
 
 class Dao
 {
@@ -12,54 +12,78 @@ class Dao
 
 	public function __construct ()
 	{
-		$connector  = \Lib\Connector::getInstance();
-		$this->conn = $connector->getConnection();
+		if (is_null($this->conn)) {
+			$connector  = \MonitoLib\Connector::getInstance();
+			$this->conn = $connector->getConnection();
+		}
 
-		$this->dtoName = str_replace('dao\oracle','dto', get_class($this));
-		$model = str_replace('dao\oracle','model', get_class($this));
+		$this->dtoName = str_replace('dao\\','dto\\', get_class($this));
+		$model = str_replace('dao\\','model\\', get_class($this));
 
-		//$this->dto   = new $this->dtoName;
-		//$this->model = new $model;
-
+		if (class_exists($this->dtoName)) {
+			$this->dto   = new $this->dtoName;
+		}
+		if (class_exists($model)) {
+			$this->model = new $model;
+		}
+		
 		$class = get_class($this);
 
-		$this->namespace .= str_replace('dao\oracle', '', substr($class, 0, strrpos($class, '\\')));
+		$this->namespace .= str_replace('\\dao', '', substr($class, 0, strrpos($class, '\\'))) . '\\';
+
+		// echo $this->namespace . "\n";
+		// exit;
 	}
 	public function delete ($mix)
 	{
-		$sql  = 'DELETE FROM ' . $this->model->getTableName() . ' WHERE ';
+		$keys = [];
 
-		if (is_array($mix))
-		{
-			if (!is_array($this->model->getPrimaryKey()))
-			{
-				throw new \Exception('Parâmetro incompatível!');
+		if (is_array($mix)) {
+			$keys[] = $mix;
+		} else {
+			$keys[][] = $mix;
+		}
+
+		$sql = 'DELETE FROM ' . $this->model->getTableName() . ' WHERE ';
+
+		// List all payload keys
+		foreach ($keys as $pks) {
+			// Checks if model keys and payload keys have the same length
+			if (count($pks) != count($this->model->getPrimaryKey(true))) {
+				throw new \Exception('Parâmetro incompatível!', 1);
 			}
 
-			foreach ($this->model->getPrimaryKey() as $k => $v)
-			{
-				$sql .= "$k = ? AND";
+			// \MonitoLib\Dev::pre($this->model->getPrimaryKey(true));
+
+			// Prepares query with parameters
+			foreach ($this->model->getPrimaryKey(true) as $pkk => $pkv) {
+				$sql .= "$pkv = :$pkv AND";
 			}
 
-			$sql = substr($sql, 0, -3);
+			$sql = substr($sql, 0, -4);
+
+			// echo $sql;exit;
+
+			$stt = oci_parse($this->conn, $sql);
+
+			// \MonitoLib\Dev::pre($pks);
+
+			foreach ($this->model->getPrimaryKey(true) as $pkk => $pkv) {
+				$var = $pks[$pkk];
+
+				// \MonitoLib\Dev::vde($var);
+
+				oci_bind_by_name($stt, ":$pkv", $var);
+			}
+
+
+			$exe = @oci_execute($stt);
 		}
-		else
-		{
-			$sql .= $this->model->getPrimaryKey() . ' = ?';
-			$mix = array($mix);
+
+		if (!$exe) {
+			$e = oci_error($stt);
+			throw new \Exception($e['message']);
 		}
-
-		$stmt = $this->conn->prepare($sql);
-
-		$i = 1;
-
-		foreach ($mix as $m)
-		{
-			$stmt->bindParam($i, $m);
-		}
-
-		$stmt->execute();
-		$stmt = NULL;
 	}
 	public function insert ($dto)
 	{
@@ -79,7 +103,7 @@ class Dao
 
 		foreach ($this->model->getFields() as $f)
 		{
-			$var = \jLib\Functions::toLowerCamelCase($f);
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
 			$get = 'get' . ucfirst($var);
 
 			$$var = $dto->$get();
@@ -114,7 +138,7 @@ class Dao
 		$sql = 'SELECT ' . implode(',', $this->model->getFields())
 			 . ' FROM ' . $this->model->getTableName() . $filter;
 
-		//echo "$sql--\n";
+		// echo "$sql--\n";
 		$stt = oci_parse($this->conn, $sql);
 		$exe = @oci_execute($stt);
 
@@ -129,7 +153,7 @@ class Dao
 		//
 		//foreach ($this->model->getFields() as $f)
 		//{
-		//	$var = \jLib\Functions::toLowerCamelCase($f);
+		//	$var = \MonitoLib\Functions::toLowerCamelCase($f);
 		//	$stmt->bindColumn($i, $$var);
 		//	$i++;
 		//}
@@ -144,7 +168,7 @@ class Dao
 		//
 		//	foreach ($this->model->getFields() as $f)
 		//	{
-		//		$var = \jLib\Functions::toLowerCamelCase($f);
+		//		$var = \MonitoLib\Functions::toLowerCamelCase($f);
 		//		$set = 'set' . ucfirst($var);
 		//		$dto->$set($$var);
 		//	}
@@ -154,15 +178,13 @@ class Dao
 
 		$dto = NULL;
 
-		if ($result)
-		{
+		if ($result) {
 			$dto = $this->dto;
 
 			$i = 0;
 
-			foreach ($this->model->getFields() as $f)
-			{
-				$var = \jLib\Functions::toLowerCamelCase($f);
+			foreach ($this->model->getFields() as $f) {
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
 				$set = 'set' . ucfirst($var);
 				$dto->$set($result[$i]);
 				$i++;
@@ -175,11 +197,41 @@ class Dao
 
 		return $dto;
 	}
+	public function getBySql ($sql)
+	{
+		$stt = oci_parse($this->conn, $sql);
+		$exe = @oci_execute($stt);
+
+		if (!$exe) {
+			$e = @oci_error($stt);
+			throw new \Exception($e['message']);
+		}
+
+		$result = oci_fetch_array($stt, OCI_NUM | OCI_RETURN_NULLS);
+
+		$dto = NULL;
+
+		if ($result) {
+			$dto = $this->dto;
+
+			$i = 0;
+
+			foreach ($this->model->getFields() as $f) {
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
+				$set = 'set' . ucfirst($var);
+				$dto->$set($result[$i]);
+				$i++;
+			}
+		}
+
+		return $dto;
+	}
 	public function getById ($id)
 	{
 		$sql = 'SELECT ' . implode(',', $this->model->getFields())
 			 . ' FROM ' . $this->model->getTableName() . ' WHERE ' . $this->model->getPrimaryKey() . ' = :id';
 
+		// echo "$sql\n";
 		$stt = oci_parse($this->conn, $sql);
 		oci_bind_by_name($stt, ':id', $id);
 		$exe = @oci_execute($stt);
@@ -195,7 +247,7 @@ class Dao
 		//
 		//foreach ($this->model->getFields() as $f)
 		//{
-		//	$var = \jLib\Functions::toLowerCamelCase($f);
+		//	$var = \MonitoLib\Functions::toLowerCamelCase($f);
 		//	$stmt->bindColumn($i, $$var);
 		//	$i++;
 		//}
@@ -210,7 +262,7 @@ class Dao
 		//
 		//	foreach ($this->model->getFields() as $f)
 		//	{
-		//		$var = \jLib\Functions::toLowerCamelCase($f);
+		//		$var = \MonitoLib\Functions::toLowerCamelCase($f);
 		//		$set = 'set' . ucfirst($var);
 		//		$dto->$set($$var);
 		//	}
@@ -228,7 +280,7 @@ class Dao
 
 			foreach ($this->model->getFields() as $f)
 			{
-				$var = \jLib\Functions::toLowerCamelCase($f);
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
 				$set = 'set' . ucfirst($var);
 				$dto->$set($result[$i]);
 				$i++;
@@ -254,10 +306,8 @@ class Dao
 
 		$sql = 'SELECT ';
 
-		foreach ($fields as $fk => $fv)
-		{
-			foreach ($fv['fields'] as $f)
-			{
+		foreach ($fields as $fk => $fv) {
+			foreach ($fv['fields'] as $f) {
 				$sql .= "$f,";
 			}
 		}
@@ -269,28 +319,22 @@ class Dao
 		$stt = oci_parse($this->conn, $sql);
 		$exe = @oci_execute($stt);
 
-		if (!$exe)
-		{
+		if (!$exe) {
 			$e = oci_error($stt);
 			throw new \Exception($e['message']);
 		}
 
-		while ($r = oci_fetch_row($stt))
-		{
+		while ($r = oci_fetch_row($stt)) {
+			$class = $this->namespace . 'dto\\' . $fv['model'];
 
-				$class = $this->namespace . 'dto\\' . $fv['model'];
-				$dto = new $class;
+			$dto = new $class;
 				
 			$i = 0;
 
-			foreach ($fields as $fk => $fv)
-			{
-
-
-				foreach ($fv['fields'] as $f)
-				{
-					$var = \jLib\Functions::toLowerCamelCase($fk.$f);
-					$set = 'set' . ucfirst(\jLib\Functions::toLowerCamelCase($f));
+			foreach ($fields as $fk => $fv) {
+				foreach ($fv['fields'] as $f) {
+					$var = \MonitoLib\Functions::toLowerCamelCase($fk.$f);
+					$set = 'set' . ucfirst(\MonitoLib\Functions::toLowerCamelCase($f));
 					$dto->$set($r[$i]);
 					$i++;
 				}
@@ -315,6 +359,16 @@ class Dao
 					;
 
 		return $limitedSql;
+	}
+	public function execute ($sql)
+	{
+		$stt = oci_parse($this->conn, $sql);
+		$exe = @oci_execute($stt);
+
+		if (!$exe) {
+			$e = oci_error($stt);
+			throw new \Exception($e['message']);
+		}
 	}
 	public function read ($filter = NULL)
 	{
@@ -447,7 +501,7 @@ class Dao
 			//{
 			//	foreach ($fv['fields'] as $f)
 			//	{
-			//		$var = \jLib\Functions::toLowerCamelCase($fk.$f);
+			//		$var = \MonitoLib\Functions::toLowerCamelCase($fk.$f);
 			//		$stmt->bindColumn($i, $$var);
 			//		$i++;
 			//	}
@@ -473,8 +527,8 @@ class Dao
 
 					foreach ($fv['fields'] as $f)
 					{
-						$var = \jLib\Functions::toLowerCamelCase($fk.$f);
-						$set = 'set' . ucfirst(\jLib\Functions::toLowerCamelCase($f));
+						$var = \MonitoLib\Functions::toLowerCamelCase($fk.$f);
+						$set = 'set' . ucfirst(\MonitoLib\Functions::toLowerCamelCase($f));
 						$dto->$set($r[$i]);
 						$i++;
 					}
@@ -508,54 +562,83 @@ class Dao
 		}
 		
 		$update = NULL;
-		$keys    = NULL;
+		$keys   = NULL;
 		
 		// TODO: isso é só pra funcionar, depois é para fazer corretamente
 		$aKeys  = array();
 		$aFields = array();
+
+		// \MonitoLib\Dev::pre($this->model->getPrimaryKey());
+
+		$key = null;
 		
-		\jLib\Dev::pre($this->model->keys);
-		
-		foreach ($this->model->getFields() as $f)
-		{
-			if ($f == $this->model->getPrimaryKey())
-			{
-				$aKeys[] = $f;
-				$key    .= "$f = ? AND";
-			}
-			else
-			{
-				$update .= "$f = :$f, ";
-				$aFields[] = $f;
+		foreach ($this->model->getFieldsList() as $fk => $f) {
+			if ($fk == $this->model->getPrimaryKey()) {
+				$aKeys[] = $fk;
+				$key    .= "$fk = :$fk AND";
+			} else {
+				if (isset($f['type']) && $f['type'] == 'datetime') {
+					$update .= "$fk = TO_DATE(:$fk, 'YYYY-MM-DD HH24:MI:SS'), ";
+				} else {
+					$update .= "$fk = :$fk, ";
+				}
+				$aFields[] = $fk;
 			}
 		}
 		
-		$update = substr($update, 0, -1);
+		$update = substr($update, 0, -2);
 		$key    = substr($key, 0, -3);
 
 		$sql  = 'UPDATE ' . $this->model->getTableName() . " SET $update WHERE $key";
 		
 		
-		\jLib\Dev::e($sql);
+		// \MonitoLib\Dev::e($sql);
+
+		echo "$sql\n";
 		
 		
-		$stmt = $this->conn->prepare($sql);
+		$stt = oci_parse($this->conn, $sql);
 
 		$i = 1;
 
 		$aFields = array_merge($aFields, $aKeys);
 		
-		foreach ($aFields as $f)
-		{
-			$var = \jLib\Functions::toLowerCamelCase($f);
+		foreach ($aFields as $f) {
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
 			$get = 'get' . ucfirst($var);
 
 			$$var = $dto->$get();
-			$stmt->bindParam($i, $$var);
+			oci_bind_by_name($stt, ":$var", $$var);
+			
+			echo ":$var, $$var \n";
+
+			// $stmt->bindParam($i, $$var);
 			$i++;
 		}
 
-		$stmt->execute();
-		$stmt = NULL;
+		echo 'ooo';
+		// exit;
+
+		$exe = @oci_execute($stt);
+
+		if (!$exe)
+		{
+			$e = oci_error($stt);
+			throw new \Exception($e['message']);
+		}
+		// $stmt->execute();
+		// $stmt = NULL;
+	}
+	public function toDataTransferObject ($data, $dtoClass = null)
+	{
+		if (is_null($dtoClass))
+		{
+			$dto = new \MonitoLib\Database\Dto($data);
+			return $dto->getData();
+		}
+		else
+		{
+			$dto = new $dtoClass;
+		}
 	}
 }

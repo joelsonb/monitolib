@@ -3,7 +3,7 @@
  * Database connector
  * @author Joelson B <joelsonb@msn.com>
  * @since 2013-12-10
- * @copyright Copyright &copy; 2009 - 2017
+ * @copyright Copyright &copy; 2013 - 2018
  *  
  * @package MonitoLib
  */
@@ -19,61 +19,29 @@ class Connector
 
 	private function __construct()
 	{
-		$file = JL_SITE_PATH . 'config' . DIRECTORY_SEPARATOR . 'database.json';
+		$file = MONITO_CONFIG_DIR . 'database.json';
 
 		// TODO: validar arquivos
-		if (!is_readable($file))
-		{
+		if (!is_readable($file)) {
 			throw new \Exception("File $file not found or permition error!");
 		}
 
 		$db = json_decode(file_get_contents($file));
 		
-		if (is_null($db))
-		{
+		if (is_null($db)) {
 			throw new \Exception("File $file can not be parsed!");
 		}
 		
 		$this->connections = new \stdClass;
 
-		if (count($db) > 0)
-		{
-			foreach ($db as $dk => $dv)
-			{
+		if (count($db) > 0) {
+			foreach ($db as $dk => $dv) {
 				//self::$connections->$dk->$dv;
 				$this->connections->$dk = $dv;
 				$this->connections->$dk->name = $dk;
 				$this->connections->$dk->instance = NULL;
 			}
 		}
-		
-		// TODO: Verificar se a conexão foi bem sucedida e atualizar o arquivo de conexões
-		
-		
-		//_pre(self::$connections);
-		
-		/*
-		_pre(self::$connections);
-		
-
-
-		if (isset($db[$conn]))
-		{
-			require_once JLIB_LIB_PATH . 'db_' . $db[$conn]['dbms'] . '.php';
-			// Todo: mudar de constante para variável
-
-			if (!defined('JLIB_DBMS'))
-			{
-				define('JLIB_DBMS', $db[$conn]['dbms']);
-			}
-
-			self::$connections[$conn] = new Db($db[$conn]);
-		}
-		else
-		{
-			throw new Exception('A conexão <b>' . $conn . '</b> não está configurada no servidor!');
-		}
-		*/
 	}
 	/**
 	 * getInstance
@@ -82,8 +50,7 @@ class Connector
 	 */
 	public static function getInstance ()
 	{
-		if (!isset(self::$instance))
-		{
+		if (!isset(self::$instance)) {
 			self::$instance = new \MonitoLib\Connector;
 		}
 
@@ -91,52 +58,63 @@ class Connector
 	}
 	public static function closeConnection ($conn = NULL)
 	{
-		if (is_null($conn))
-		{
-			foreach (self::$connections as $c)
-			{
+		if (is_null($conn)) {
+			foreach (self::$connections as $c) {
 				_vd($c);
 				$c->instance->close();
 			}
 
 			self::$connections = NULL;
-		}
-		else
-		{
-			if (key_exists($conn, self::$connections))
-			{
+		} else {
+			if (key_exists($conn, self::$connections)) {
 				self::$connections->$conn->instance = NULL;
 				//unset(self::$connections->$conn);
 			}
 		}
 	}
-	public function getConnection ($conn = NULL)
+	public function getConfig ($conn = NULL)
 	{
-		if (count($this->connections) == 0)
-		{
-			throw new \Exception('There are no connections!');
+		if (count($this->connections) == 0) {
+			throw new \Exception('There is no connections!');
 		}
 
-		if (is_null($this->connection) and is_null($conn))
-		{
+		if (is_null($this->connection) and is_null($conn)) {
 			throw new \Exception('There is no default connection!');
 		}
 
-		if (is_null($conn))
-		{
+		if (is_null($conn)) {
 			$conn = $this->connection;
 		}
 
-		if (!isset($this->connections->$conn))
-		{
+		if (!isset($this->connections->$conn)) {
 			throw new \Exception("Connection $conn is not configured!");
 		}
 
-		if (is_null($this->connections->$conn->instance))
-		{
-			switch ($this->connections->$conn->dbms)
-			{
+		return $this->connections->$conn;
+	}
+	public function getConnection ($conn = null)
+	{
+		if (count($this->connections) == 0) {
+			throw new \Exception('There is no connections!');
+		}
+
+		if (is_null($this->connection) and is_null($conn)) {
+			throw new \Exception('There is no default connection!');
+		}
+
+		if (is_null($conn)) {
+			$conn = $this->connection;
+		}
+
+		if (!isset($this->connections->$conn)) {
+			throw new \Exception("Connection $conn is not configured!");
+		}
+
+		if (is_null($this->connections->$conn->instance)) {
+			switch ($this->connections->$conn->dbms) {
 				case 'mysql':
+					$obj = new \mysqli($this->connections->$conn->server, $this->connections->$conn->user, $this->connections->$conn->password, $this->connections->$conn->database);
+					break;
 				case 'mysql-pdo':
 					$obj = new \PDO('mysql:host=' . $this->connections->$conn->server 
 						. ';dbname=' . $this->connections->$conn->database 
@@ -147,8 +125,7 @@ class Connector
 				case 'oracle':
 						$obj = oci_connect($this->connections->$conn->user, $this->connections->$conn->password, $this->connections->$conn->server);
 
-						if (!$obj)
-						{
+						if (!$obj) {
 							$m = oci_error();
 							throw new \Exception($m['message']);
 						}
@@ -182,8 +159,7 @@ class Connector
 	 */
 	public function setConnection ($conn)
 	{
-		if (!key_exists($conn, $this->connections))
-		{
+		if (!key_exists($conn, $this->connections)) {
 			throw new \Exception("There is no connection \"$conn\"!");
 		}
 

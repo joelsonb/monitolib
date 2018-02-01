@@ -1,5 +1,5 @@
 <?php
-namespace jLib;
+namespace MonitoLib;
 
 class Logger
 {
@@ -10,23 +10,19 @@ class Logger
 
 	public function log ($text, $echo = false, $breakLine = true, $timeStamp = true)
 	{
-		if ($timeStamp)
-		{
+		if ($timeStamp) {
 			$text = date('Y-m-d H:i:s') . ': ' . $text;
 		}
 
-		if ($breakLine)
-		{
+		if ($breakLine) {
 			$text .= "\r\n";
 		}
 
-		if ($this->echoLog || $echo)
-		{
+		if ($this->echoLog || $echo) {
 			echo $text;
 		}
 		
-		if (!error_log($text, 3, $this->outputFile))
-		{
+		if (!error_log($text, 3, $this->outputFile)) {
 			throw new \Exception('Erro ao gravar log em: ' . $this->outputFile . "!\r\n");
 		}
 	}

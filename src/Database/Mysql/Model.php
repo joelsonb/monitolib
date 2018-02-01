@@ -1,5 +1,5 @@
 <?php
-namespace vendor\ldm\Database\MySQL;
+namespace MonitoLib\Database\MySQL;
 
 class Model
 {
@@ -47,13 +47,10 @@ class Model
 	}
 	public function getFields ()
 	{
-		if (isset($this->fields[0]))
-		{
+		if (isset($this->fields[0])) {
 			//\jLib\Dev::pre($this->fields);
 			return $this->fields;
-		}
-		else
-		{
+		} else {
 			return array_keys($this->fields);
 		}
 	}
@@ -69,7 +66,7 @@ class Model
 		{
 			foreach ($this->fields as $fk => $fv)
 			{
-				$fv = \jLib\Functions::ArrayMergeRecursive($this->defaults, $fv);
+				$fv = \MonitoLib\Functions::ArrayMergeRecursive($this->defaults, $fv);
 	
 				if (!$fv['auto'])
 				{
@@ -141,18 +138,22 @@ class Model
 
 		foreach ($this->fields as $fk => $fv)
 		{
-			$fv = \jLib\Functions::ArrayMergeRecursive($this->defaults, $fv);
+			// echo "\$fk: $fk\n";
 
-			$getObject = 'get' . ucfirst(\jLib\Functions::toLowerCamelCase($fk));
-			$setObject = 'set' . ucfirst(\jLib\Functions::toLowerCamelCase($fk));
+			$fv = \MonitoLib\Functions::ArrayMergeRecursive($this->defaults, $fv);
+
+			$getObject = 'get' . ucfirst(\MonitoLib\Functions::toLowerCamelCase($fk));
+			$setObject = 'set' . ucfirst(\MonitoLib\Functions::toLowerCamelCase($fk));
 
 			$value = $dtoObject->$getObject();
 
+			// \MonitoLib\Dev::pre($fv);
+
 			// Search for default values
-			if (is_null($value))
+			if (is_null($value) || $value === false)
 			{
 				// Checks if ins_date and upd_date are null and set current date as its values
-				if (in_array($fk, array('date_ins', 'date_upd')))
+				if (in_array($fk, array('ins_time', 'date_upd')))
 				{
 					$value = date('Y-m-d H:i:s');
 				}
@@ -160,6 +161,8 @@ class Model
 				if (!is_null($fv['defaultValue']))
 				{
 					$value = $fv['defaultValue'];
+					$dtoObject->$setObject($value);
+					// echo "\$dtoObject->$setObject($value);\n";
 				}
 
 				if (defined('JLIB_IS_SECURE') && JLIB_IS_SECURE && in_array($fk, array('user_id_ins', 'user_id_upd')))
@@ -167,11 +170,20 @@ class Model
 					$user = $_SESSION[JLIB_SID]['user'];
 					$value = $user->getId();
 				}
+				// if (!is_null($value))
+				// {
+					
+				// }
+			}
+
+			if (in_array($fv['type'], ['int','date','time','tinyint']) && $value == '') {
+				$dtoObject->$setObject(null);
 			}
 
 			if ($fv['auto'] == false && $fv['required'] == true && ($value == '' || is_null($value)))
 			{
-				$exception .= "Informe um valor para o campo <b>{$fv['label']}</b>!<br />";
+				$label = $fv['label'] == '' ? $fk : $fv['label'];
+				$exception .= "Informe um valor para o campo <b>$label</b>!<br />";
 			}
 			
 			if (isset($fv['maxLength']))
@@ -185,10 +197,7 @@ class Model
 				}
 			}
 			
-			if (!is_null($value))
-			{
-				$dtoObject->$setObject($value);
-			}
+
 
 		}
 

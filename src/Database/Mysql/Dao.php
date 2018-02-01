@@ -1,5 +1,5 @@
 <?php
-namespace vendor\ldm\Database\MySQL;
+namespace MonitoLib\Database\MySQL;
 
 class Dao
 {
@@ -13,9 +13,8 @@ class Dao
 
 	public function __construct ()
 	{
-		if (is_null($this->connection))
-		{
-			$connector  = \vendor\ldm\Connector::getInstance();
+		if (is_null($this->conn)) {
+			$connector  = \MonitoLib\Connector::getInstance();
 			$this->conn = $connector->getConnection();
 		}
 
@@ -29,31 +28,36 @@ class Dao
 
 		$this->namespace .= str_replace('dao\\', '', substr($class, 0, strrpos($class, '\\')));
 	}
+	public function countByFilter ($filter)
+	{
+		$sql = 'SELECT COUNT(*) AS count FROM ' . $this->model->getTableName() . $filter;
+		$stmt = $this->conn->prepare($sql);
+		$stmt->execute();
+		$stmt->bindColumn(1, $count);
+		$stmt->fetch();
+
+		return $count;
+	}
 	public function delete ($mix)
 	{
-		if ($this->model->getTableType() == 'view')
-		{
-			throw new \Exception('Não é possível deletar registros de uma view!');
+		if ($this->model->getTableType() == 'view') {
+			throw new \Exception('A view object is readonly!');
 		}
 
 		$sql  = 'DELETE FROM ' . $this->model->getTableName() . ' WHERE ';
 
 		if (is_array($mix))
 		{
-			if (!is_array($this->model->getPrimaryKey()))
-			{
+			if (!is_array($this->model->getPrimaryKey())) {
 				throw new \Exception('Parâmetro incompatível!');
 			}
 
-			foreach ($this->model->getPrimaryKey() as $k => $v)
-			{
+			foreach ($this->model->getPrimaryKey() as $k => $v) {
 				$sql .= "$k = ? AND";
 			}
 
 			$sql = substr($sql, 0, -3);
-		}
-		else
-		{
+		} else {
 			$sql .= $this->model->getPrimaryKey() . ' = ?';
 			$mix = array($mix);
 		}
@@ -62,25 +66,33 @@ class Dao
 
 		$i = 1;
 
-		foreach ($mix as $m)
-		{
+		foreach ($mix as $m) {
 			$stmt->bindParam($i, $m);
 		}
 
-		$stmt->execute();
+		$stmt->execute;
 		$stmt = NULL;
 	}
-	public function insert ($dto)
+	public function bulkInsert ($dtoList, $split = 1000)
 	{
-		if ($this->model->getTableType() == 'view')
-		{
+		if (count($dtoList) === 0) {
+			throw new \Exception('Invalid list!');
+		}
+		if ($this->model->getTableType() === 'view') {
 			throw new \Exception('Não é possível inserir registros em uma view!');
 		}
 
-		if (!$dto instanceof $this->dtoName)
-		{
-			throw new \Exception('O parâmetro passado não é uma instância de ' . $this->dtoName . '!');
+		$sql = 'INSERT INTO ' . $this->model->getTableName() . ' (`' . implode('`,`', $this->model->getFieldsInsert()) . '`) VALUES '; 
+
+		foreach ($dtoList as $dto) {
+			if (!$dto instanceof $this->dtoName)
+			{
+				throw new \Exception('O parâmetro passado não é uma instância de ' . $this->dtoName . '!');
+			}
 		}
+
+
+
 		
 		
 		//\jLib\Dev::pre($this->model->getPrimaryKey());
@@ -93,9 +105,8 @@ class Dao
 
 		$i = 1;
 
-		foreach ($this->model->getFieldsInsert() as $f)
-		{
-			$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+		foreach ($this->model->getFieldsInsert() as $f) {
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
 			$get = 'get' . ucfirst($var);
 
 			$$var = $dto->$get();
@@ -107,12 +118,66 @@ class Dao
 		$stmt->execute();
 		$stmt = NULL;
 	}
+	public function insert ($dto)
+	{
+		try {
+			if ($this->model->getTableType() == 'view') {
+				throw new \Exception('Não é possível inserir registros em uma view!');
+			}
+
+			if (!$dto instanceof $this->dtoName) {
+				throw new \Exception('O parâmetro passado não é uma instância de ' . $this->dtoName . '!');
+			}
+
+			if (method_exists($dto, 'setInsTime') && is_null($dto->getInsTime())) {
+				$dto->setInsTime(date('Y-m-d H:i:s'));
+			}
+			if (method_exists($dto, 'setInsUserId') && is_null($dto->getInsUserId())) {
+				// TODO: buscar o usuário atual
+				$dto->setInsUserId(751129730);
+			}
+			
+			
+			//\jLib\Dev::pre($this->model->getPrimaryKey());
+			//\jLib\Dev::pre($this->model->getFields());
+
+			$sql = 'INSERT INTO ' . $this->model->getTableName() . ' ('
+				 . '`' . implode('`,`', $this->model->getFieldsInsert()) . '`) '
+				 . 'VALUES (' . substr(str_repeat('?,', count($this->model->getFieldsInsert())), 0, -1) . ')';
+			$stmt = $this->conn->prepare($sql);
+
+			$i = 1;
+
+			foreach ($this->model->getFieldsInsert() as $f) {
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
+				$get = 'get' . ucfirst($var);
+
+				$$var = $dto->$get();
+
+				$stmt->bindParam($i, $$var);
+				$i++;
+			}
+
+			$stmt->execute();
+			$stmt = NULL;
+
+			if (is_null($dto->getId())) {
+				$dto->setId($this->conn->lastInsertId());
+				return $dto;
+			}
+		} catch (\PDOException $e) {
+			\MonitoLib\Dev::pre($e);
+		}
+	}
+	public function getConnection ()
+	{
+		return $this->conn;
+	}
 	public function getByFilter ($filter)
 	{
-		$sql = 'SELECT ' . implode(',', $this->model->getFields())
+		$sql = 'SELECT ' . implode(',', (is_null($filter->getFields()) ? $this->model->getFields() : $filter->getFields()))
 			 . ' FROM ' . $this->model->getTableName()
 			 . $filter;
-
 		$stmt = $this->conn->prepare($sql);
 		$stmt->execute();
 
@@ -120,7 +185,7 @@ class Dao
 
 		foreach ($this->model->getFields() as $f)
 		{
-			$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
 			$stmt->bindColumn($i, $$var);
 			$i++;
 		}
@@ -133,7 +198,7 @@ class Dao
 
 			foreach ($this->model->getFields() as $f)
 			{
-				$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
 				$set = 'set' . ucfirst($var);
 				$dto->$set($$var);
 			}
@@ -148,7 +213,7 @@ class Dao
 		$sql = 'SELECT `' . implode('`,`', $this->model->getFields())
 			 . '` FROM ' . $this->model->getTableName() . ' WHERE ' . $this->model->getPrimaryKey() . ' = ?';
 
-		// \vendor\ldm\Dev::e($sql . $id);
+		// \MonitoLib\Dev::e($sql . $id);
 
 		$stmt = $this->conn->prepare($sql);
 		$stmt->bindParam(1, $id);
@@ -158,7 +223,7 @@ class Dao
 
 		foreach ($this->model->getFields() as $f)
 		{
-			$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
 			$stmt->bindColumn($i, $$var);
 			$i++;
 		}
@@ -171,7 +236,7 @@ class Dao
 
 			foreach ($this->model->getFields() as $f)
 			{
-				$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
 				$set = 'set' . ucfirst($var);
 				$dto->$set($$var);
 			}
@@ -187,33 +252,33 @@ class Dao
 	}
 	public function getList ($filter = null)
 	{
-		$sql = 'SELECT `' . implode('`,`', $this->model->getFields())
+		// \MonitoLib\Dev::pre($this->model);
+		// $sql = 'SELECT `' . implode('`,`', $this->model->getFields())
+		$sql = 'SELECT `' . implode('`,`', (is_null($filter) || is_null($filter->getFields()) ? $this->model->getFields() : $filter->getFields()))
 			 . '` FROM ' . $this->model->getTableName() . $filter;
 
+			// echo $sql . "\n";
 		
-		// \vendor\ldm\Dev::e($sql);
+		// \MonitoLib\Dev::e($sql);
 		
 		$stmt = $this->conn->prepare($sql);
 		$stmt->execute();
 
 		$i = 1;
 
-		foreach ($this->model->getFields() as $f)
-		{
-			$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+		foreach ($this->model->getFields() as $f) {
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
 			$stmt->bindColumn($i, $$var);
 			$i++;
 		}
 
 		$data = array();
 
-		while ($stmt->fetch())
-		{
+		while ($stmt->fetch()) {
 			$dto = new $this->dtoName;
 
-			foreach ($this->model->getFields() as $f)
-			{
-				$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+			foreach ($this->model->getFields() as $f) {
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
 				$set = 'set' . ucfirst($var);
 				$dto->$set($$var);
 			}
@@ -233,7 +298,7 @@ class Dao
 
 		foreach ($this->model->getFields() as $f)
 		{
-			$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
 			$stmt->bindColumn($i, $$var);
 			$i++;
 		}
@@ -246,7 +311,69 @@ class Dao
 
 			foreach ($this->model->getFields() as $f)
 			{
-				$var = \vendor\ldm\Functions::toLowerCamelCase($f);
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
+				$set = 'set' . ucfirst($var);
+				$dto->$set($$var);
+			}
+
+			$data[] = $dto;
+		}
+
+		$stmt = NULL;
+
+		return $data;
+	}
+	public function getBySql ($sql)
+	{
+		$stmt = $this->conn->prepare($sql);
+		$stmt->execute();
+
+		$i = 1;
+
+		foreach ($this->model->getFields() as $f) {
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
+			$stmt->bindColumn($i, $$var);
+			$i++;
+		}
+
+		$dto = NULL;
+
+		if ($stmt->fetch()) {
+			$dto = $this->dto;
+
+			foreach ($this->model->getFields() as $f) {
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
+				$set = 'set' . ucfirst($var);
+				$dto->$set($$var);
+			}
+		}
+
+		$stmt = NULL;
+
+		return $dto;
+	}
+	public function listBySql ($sql)
+	{
+		$stmt = $this->conn->prepare($sql);
+		$stmt->execute();
+
+		$i = 1;
+
+		foreach ($this->model->getFields() as $f) {
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
+			$stmt->bindColumn($i, $$var);
+			$i++;
+		}
+
+		$data = array();
+
+		while ($stmt->fetch())
+		{
+			$dto = new $this->dtoName;
+
+			foreach ($this->model->getFields() as $f)
+			{
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
 				$set = 'set' . ucfirst($var);
 				$dto->$set($$var);
 			}
@@ -373,7 +500,7 @@ class Dao
 			{
 				foreach ($fv['fields'] as $f)
 				{
-					$var = \vendor\ldm\Functions::toLowerCamelCase($fk.$f);
+					$var = \MonitoLib\Functions::toLowerCamelCase($fk.$f);
 					$stmt->bindColumn($i, $$var);
 					$i++;
 				}
@@ -401,8 +528,8 @@ class Dao
 
 					foreach ($fv['fields'] as $f)
 					{
-						$var = \vendor\ldm\Functions::toLowerCamelCase($fk.$f);
-						$set = 'set' . ucfirst(\vendor\ldm\Functions::toLowerCamelCase($f));
+						$var = \MonitoLib\Functions::toLowerCamelCase($fk.$f);
+						$set = 'set' . ucfirst(\MonitoLib\Functions::toLowerCamelCase($f));
 						$dto->$set($$var);
 					}
 
@@ -428,7 +555,7 @@ class Dao
 	{
 		if (is_null($dtoClass))
 		{
-			$dto = new \vendor\ldm\Database\Dto($data);
+			$dto = new \MonitoLib\Database\Dto($data);
 			return $dto->getData();
 		}
 		else
@@ -444,63 +571,75 @@ class Dao
 	}
 	public function update ($dto)
 	{
-		if ($this->model->getTableType() == 'view')
-		{
-			throw new \Exception('Não é possível atualizar registros de uma view!');
-		}
-
-		if (!$dto instanceof $this->dtoName)
-		{
-			throw new \Exception('O parâmetro passado não é uma instância de ' . $this->dtoName . '!');
-		}
-		
-		$update = NULL;
-		$key    = NULL;
-		
-		// TODO: isso é só pra funcionar, depois é para fazer corretamente
-		$aKeys  = array();
-		$aFields = array();
-		
-		foreach ($this->model->getFields() as $f)
-		{
-			if ($f == $this->model->getPrimaryKey())
+		try {
+			if ($this->model->getTableType() == 'view')
 			{
-				$aKeys[] = $f;
-				$key    .= "$f = ? AND";
+				throw new \Exception('Não é possível atualizar registros de uma view!');
 			}
-			else
+
+			if (!$dto instanceof $this->dtoName)
 			{
-				$update .= "`$f` = ?,";
-				$aFields[] = $f;
+				throw new \Exception('O parâmetro passado não é uma instância de ' . $this->dtoName . '!');
 			}
+
+			if (method_exists($dto, 'setUpdTime') && is_null($dto->getUpdTime())) {
+				$dto->setUpdTime(date('Y-m-d H:i:s'));
+			}
+			if (method_exists($dto, 'setUpdUserId') && is_null($dto->getUpdUserId())) {
+				// TODO: buscar o usuário atual
+				$dto->setUpdUserId(751129730);
+			}
+
+			$update = NULL;
+			$key    = NULL;
+			
+			// TODO: isso é só pra funcionar, depois é para fazer corretamente
+			$aKeys  = array();
+			$aFields = array();
+			
+			foreach ($this->model->getFields() as $f)
+			{
+				if ($f == $this->model->getPrimaryKey())
+				{
+					$aKeys[] = $f;
+					$key    .= "$f = ? AND";
+				}
+				else
+				{
+					$update .= "`$f` = ?,";
+					$aFields[] = $f;
+				}
+			}
+			
+			$update = substr($update, 0, -1);
+			$key    = substr($key, 0, -3);
+
+			$sql  = 'UPDATE ' . $this->model->getTableName() . " SET $update WHERE $key";
+			
+			
+			// \MonitoLib\Dev::e($sql);
+			
+			
+			$stmt = $this->conn->prepare($sql);
+
+			$i = 1;
+
+			$aFields = array_merge($aFields, $aKeys);
+			
+			foreach ($aFields as $f)
+			{
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
+				$get = 'get' . ucfirst($var);
+
+				$$var = $dto->$get();
+				$stmt->bindParam($i, $$var);
+				$i++;
+			}
+
+			$stmt->execute();
+			$stmt = NULL;
+		} catch (\PDOException $e) {
+			\MonitoLib\Dev::pre($e);
 		}
-		
-		$update = substr($update, 0, -1);
-		$key    = substr($key, 0, -3);
-
-		$sql  = 'UPDATE ' . $this->model->getTableName() . " SET $update WHERE $key";
-		
-		
-		//\jLib\Dev::e($sql);
-		
-		
-		$stmt = $this->conn->prepare($sql);
-
-		$i = 1;
-
-		$aFields = array_merge($aFields, $aKeys);
-		
-		foreach ($aFields as $f)
-		{
-			$var = \vendor\ldm\Functions::toLowerCamelCase($f);
-			$get = 'get' . ucfirst($var);
-
-			$$var = $dto->$get();
-			$stmt->bindParam($i, $$var);
-			$i++;
-		}
-
-		$stmt->execute();
-		$stmt = NULL;
 	}
 }

@@ -1,5 +1,5 @@
 <?php
-namespace jLib\Pattern\Oracle;
+namespace MonitoLib\Database\Oracle;
 
 class Model
 {
@@ -7,12 +7,20 @@ class Model
 
 	public function addValidation ($field)
 	{
-		if (in_array($field, $this->fields))
-		{
+		if (in_array($field, $this->fields)) {
 			//$v = new \jLib\ValidationRule;
 		}
 	}
 	public function getFields ()
+	{
+		if (isset($this->fields[0])) {
+			//\jLib\Dev::pre($this->fields);
+			return $this->fields;
+		} else {
+			return array_keys($this->fields);
+		}
+	}
+	public function getFieldsList ()
 	{
 		return $this->fields;
 	}
@@ -25,8 +33,12 @@ class Model
 		$class = get_class($this);
 		return substr($class, strrpos($class, '\\') + 1);
 	}
-	public function getPrimaryKey ()
+	public function getPrimaryKey ($raw = false)
 	{
+		if ($raw) {
+			return $this->keys;
+		}
+
 		$keys = 'id';
 
 		if (!is_null($this->keys))
