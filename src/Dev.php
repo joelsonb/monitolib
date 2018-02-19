@@ -3,11 +3,10 @@
  * Dev
  * 
  * Development tools
- * @author Joelson Batista <joelsonb@msn.com>
- * @since 2015-11-03
- * @copyright Copyright &copy; 2015
+ * @author Joelson B <joelsonb@msn.com>
+ * @copyright Copyright &copy; 2015 - 2018
  * 
- * @package \jLib\lib
+ * @package \MonitoLib
  */
 namespace MonitoLib;
 
@@ -20,6 +19,12 @@ class Dev
 	{
 		echo $s;
 		exit;
+	}
+	public function lme ($class)
+	{
+		$methods = get_class_methods($class);
+		sort($methods);
+		self::pre($methods);
 	}
 	public static function pr ($a, $e = false)
 	{
