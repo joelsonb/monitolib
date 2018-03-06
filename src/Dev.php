@@ -20,7 +20,7 @@ class Dev
 		echo $s;
 		exit;
 	}
-	public function lme ($class)
+	public static function lme ($class)
 	{
 		$methods = get_class_methods($class);
 		sort($methods);

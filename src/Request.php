@@ -13,6 +13,7 @@ class Request
 	private $queryString = [];
 	private $requestUri;
 	private $post;
+	private $params;
 
 	private function __construct ()
 	{
@@ -20,11 +21,11 @@ class Request
 	}
 	public static function getInstance ()
 	{
-		if (is_null(self::$instance)) {
-			return new \MonitoLib\Request;
-		} else {
-			return self::$instance;
+		if (!isset(self::$instance)) {
+			self::$instance = new \MonitoLib\Request;
 		}
+
+		return self::$instance;
 	}
 	public function getJson ($asArray = false)
 	{
@@ -39,6 +40,18 @@ class Request
 		// 		return null;
 		// 	}
 		// }
+	}
+	public function getParam ($key = null)
+	{
+		if (is_null($key)) {
+			return $this->params;
+		} else {
+			if (isset($this->params[$key])) {
+				return $this->params[$key];
+			} else {
+				return null;
+			}
+		}
 	}
 	public function getQueryString ($key = null)
 	{
@@ -69,6 +82,10 @@ class Request
 				$this->queryString[$f[0]] = $f[1];
 			}
 		}		
+	}
+	public function setParams ($params)
+	{
+		$this->params = $params;
 	}
 	public function setRequestUri ($requestUri)
 	{

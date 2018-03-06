@@ -1,7 +1,7 @@
 <?php
-namespace MonitoLib\Database\MySQL;
+namespace MonitoLib\Database\Model;
 
-class Model
+class MySQL
 {
 	protected $tableType = 'table';
 	protected $joins;

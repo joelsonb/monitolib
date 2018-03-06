@@ -9,94 +9,24 @@ class Router
 {
 	static private $routes = [];
 
-	private static function addNEW ($method, $url, $action, $secure = true)
-	{
-		echo $url . '<br />';
-		$parts = explode('/', trim($url, '/'));
-		\MonitoLib\Dev::pr($parts);
-
-		$routes = [
-			$method => [],
-		];
-
-		// $ca = $routes[$method];
-
-		$maxIndex = count($parts) - 1;
-
-		echo "\$maxIndex: $maxIndex<br />"; 
-
-		$cf = null;
-		$af = null;
-
-		for ($i = 0; $i <= $maxIndex; $i++) {
-			// Verifica se o index é uma string ou padrão
-			if (in_array(substr($parts[$i], 0, 1), [':','?'])) {
-				if (preg_match('/\{(.*)\}/', $parts[$i], $matchs)) {
-					$index = $matchs[1];
-				} else {
-					if (substr($parts[$i], 0, 1) == ':') {
-						$index = '.*';
-					} else {
-						$index = '[.*]?';
-					}
-				}
-			} else {
-				$index = $parts[$i];
-			}
-
-			// Verifica se existe array para o índice atual
-
-			if ($i == $maxIndex) {
-				$af[$index] = ['@' => $action . ($secure ? '+' : '')];
-			} else {
-				$af[$index] = $cf;
-			}
-
-			$cf = $af;
-			$af = [];
-			\MonitoLib\Dev::pr($cf);
-		}
-
-		$routes[$method] = $cf;
-
-		self::$routes = \MonitoLib\Functions::ArrayMergeRecursive(self::$routes, $routes);
-	}
 	private static function add ($method, $url, $action, $secure = true)
 	{
 		$parts = explode('/', $url);
-		// \MonitoLib\Dev::pr($parts);
 
-		$routes = [
-			$method => [],
-		];
-
-		// $ca = $routes[$method];
-
-		$len = count($parts) - 1;
-
+		$routes = [];
 		$cf = null;
 		$af = null;
 
-		for ($i = $len; $i > 0; $i--) { 
-			if (in_array(substr($parts[$i], 0, 1), [':','?'])) {
-				if (preg_match('/\{(.*)\}/', $parts[$i], $matchs)) {
-					$index = $matchs[1];
-				} else {
-					if (substr($parts[$i], 0, 1) == ':') {
-						$index = '.*';
-					} else {
-						$index = '[.*]?';
-					}
-				}
-			} else {
-				$index = $parts[$i];
-			}
+		$len = count($parts) - 1;
+
+		for ($i = $len; $i >= 0; $i--) { 
+			$index = $parts[$i];
 
 			if ($i == $len) {
-				// $af = [$index => $action . ($secure ? '+' : '')];
 				$af[$index] = [
-					'@' => $action . ($secure ? '+' : ''),
-					'*' => [$method]
+					'@' => [
+						$method => $action
+					]
 				];
 			} else {
 				$af[$index] = $cf;
@@ -104,116 +34,13 @@ class Router
 
 			$cf = $af;
 			$af = [];
-			// \MonitoLib\Dev::pr($cf);
 		}
 
-		// $routes[$method] = $cf;
-		$routes = $cf;
-
-
-		// \MonitoLib\Dev::pr(self::$routes);
-		// \MonitoLib\Dev::pr($routes);
-
-
-
-		self::$routes = \MonitoLib\Functions::ArrayMergeRecursive(self::$routes, $routes);
+		self::$routes = \MonitoLib\Functions::ArrayMergeRecursive(self::$routes, $cf);
 	}
-	public static function cliOLD ($url, $action, $secure = false)
+	public static function cli ($url, $action, $secure = true)
 	{
-		$method = 'cli';
-		$parts = explode('/', $url);
-		\MonitoLib\Dev::pre($parts);
-
-		$routes = [
-			$method => [],
-		];
-
-		$ca = $routes[$method];
-
-		$len = count($parts) - 1;
-
-		$cf = null;
-		$af = null;
-
-		for ($i = $len; $i > 0; $i--) { 
-			if (in_array(substr($parts[$i], 0, 1), [':','?'])) {
-				if (preg_match('/\{(.*)\}/', $parts[$i], $matchs)) {
-					$index = $matchs[1];
-				} else {
-					if (substr($parts[$i], 0, 1) == ':') {
-						$index = '.*';
-					} else {
-						$index = '[.*]?';
-					}
-				}
-			} else {
-				$index = $parts[$i];
-			}
-
-			if ($i == $len) {
-				$af = [$index => $action . ($secure ? '+' : '')];
-			} else {
-				$af[$index] = $cf;
-			}
-
-			$cf = $af;
-			$af = [];
-		}
-
-
-		$routes[$method] = $cf;
-		\MonitoLib\Dev::pre($routes);
-
-		self::$routes = \MonitoLib\Functions::ArrayMergeRecursive(self::$routes, $routes);
-	}
-	public static function cli ($url, $action, $secure = false)
-	{
-
-		$method = 'cli';
-		$parts = explode('/', $url);
-		// \MonitoLib\Dev::pre($parts);
-
-		$routes = [
-			$method => [],
-		];
-
-		$ca = $routes[$method];
-
-		$len = count($parts) - 1;
-
-		$cf = null;
-		$af = null;
-
-		for ($i = $len; $i >= 0; $i--) { 
-			if (in_array(substr($parts[$i], 0, 1), [':','?'])) {
-				if (preg_match('/\{(.*)\}/', $parts[$i], $matchs)) {
-					$index = $matchs[1];
-				} else {
-					if (substr($parts[$i], 0, 1) == ':') {
-						$index = '.*';
-					} else {
-						$index = '[.*]?';
-					}
-				}
-			} else {
-				$index = $parts[$i];
-			}
-
-			if ($i == $len) {
-				$af = [$index => ['@' => $action]];
-			} else {
-				$af[$index] = $cf;
-			}
-
-			$cf = $af;
-			$af = [];
-		}
-
-
-		$routes[$method] = $cf;
-		// \MonitoLib\Dev::pre($routes);
-
-		self::$routes = \MonitoLib\Functions::ArrayMergeRecursive(self::$routes, $routes);
+		self::add('CLI', $url, $action, $secure);
 	}
 	public static function get ($url, $action, $secure = true)
 	{
@@ -240,224 +67,143 @@ class Router
 	}
 	static public function check ($request)
 	{
-		// TODO: usar try...catch
-		// echo 'ru: ' . $request->getRequestUri() . '<br />';
-		// \MonitoLib\Dev::pr(self::$routes);
-
-		$requestMethod = $_SERVER['REQUEST_METHOD'];
+		if (PHP_SAPI == 'cli') {
+			$requestMethod = 'CLI';
+			$params = $request->getParam();
+		} else {
+			$requestMethod = $_SERVER['REQUEST_METHOD'];
+			$params = [];
+		}
 
 		$uriParts = explode('/', trim($request->getRequestUri(), '/'));
-
-		// \MonitoLib\Dev::pre($uriParts);
 
 		$currentArray = [];
 
 		$action = true;
-		$params = [];
 
+		try {
+			if (isset(self::$routes)) {
+				$ri = self::$routes;
 
-		if (isset(self::$routes)) {
-			$ri = self::$routes;
+				$cParts = count($uriParts);
+				$i = 1;
 
-			// Percorre as partes da uri para identificar a rota
-			// TODO: casar regexp
-			// \MonitoLib\Dev::pr($ri);
+				$matched = false;
+				$xPart = '';
 
-			foreach ($uriParts as $uriPart) {
-				if (isset($ri[$uriPart])) {
-					echo "existe $uriPart<br />";
-					// $ri = self::$routes[$uriPart];
-				} else {
-					// self::$routes[$uriPart] = [];
-					echo "nao existe $uriPart<br />";
-				}
-				
+				foreach ($uriParts as $uriPart) {
+					// Verifica se a parte casa
+					if (isset($ri[$uriPart])) {
+						$matched = true;
 
+						// echo "matched: $uriPart<br />";
 
-				// $ri = self::$routes[$uriPart];
-			}
+						$xPart = $uriPart;
+					} else {
+						foreach ($ri as $key => $value) {
+							if (preg_match('/:\{.*\}/', $key)) {
+								$key1 = substr($key, 2, -1);
 
-			\MonitoLib\Dev::pre($ri);
-
-			foreach ($uriParts as $uriPart) {
-				$rk = key($ri);
-				// if (isset($ri[$uriPart])) {
-				if (isset($ri[$uriPart])) {
-					$ri = $ri[$uriPart];
-
-					// \MonitoLib\Dev::pre($ri);
-					if (isset($ri['*']) && !in_array($requestMethod, $ri['*'])) {
-						return [
-							'code'    => 405,
-							'message' => 'Method Not Allowed!',
-							'debug'   => [
-								'method' => $requestMethod,
-								'url'    => $request->getRequestUri(),
-								],
-							];
-					}
-
-					if (isset($ri['@'])) {
-						$action = $ri['@'];
-					}
-				} elseif (preg_match("/$rk/", $uriPart)) {
-					$params[] = $uriPart;
-					$ri = $ri[$rk];
-
-					// \MonitoLib\Dev::pre($ri);
-					if (isset($ri['*']) && !in_array($requestMethod, $ri['*'])) {
-						return [
-							'code'    => 405,
-							'message' => 'Method Not Allowed!',
-							'debug'   => [
-								'method' => $requestMethod,
-								'url'    => $request->getRequestUri(),
-								],
-							];
-					}
-					if (isset($ri['@'])) {
-						$action = $ri['@'];
-					}
-				} else {
-					$action = false;
-					break;
-				}
-			}
-		}
-		
-		$secure = false;
-
-		if (!$action) {
-			return [
-				'code'    => 404,
-				'message' => 'Route not configured in the server!',
-				'debug'   => [
-					'method' => $requestMethod,
-					'url'    => $request->getRequestUri(),
-					],
-				];
-		}
-
-		$parts  = explode('@', $action);
-		$class  = $parts[0];
-		$method = $parts[1];
-
-		// $classCudo = new $class;
-
-		if (class_exists($class)) {
-			$class = new $class;
-
-			if (is_callable([$class, $method])) {
-				// Verifica se permite acesso sem credenciais
-				if ($secure) {
-					// Verifica se o usuário tem as credenciais necessárias
-					// if (!$hasPower)
-					// {
-						$return = [
-							'version' => LDM_APP_VERSION,
-							'code'    => 4, 
-							'message' => 'You don not have right privileges!',
-							];
-						return $return;
-					// }
-				}
-
-				try {
-					$return = $class->$method(...$params);
-				} catch (\Exception $e) {
-					$return = [
-						'code'    => $e->getCode(), 
-						'message' => $e->getMessage(),
-						];
-				}
-			} else {
-				$return = [
-					'code'    => 5, 
-					'message' => 'Controller method not found!',
-					];
-			}
-		} else {
-			$return = [
-				'code'    => 3, 
-				'message' => 'Controller not found!',
-				];
-		}
-
-		$return['version'] = LDM_APP_VERSION;
-
-		return $return;
-	}
-	static public function checkOLD ($request)
-	{
-		\MonitoLib\Dev::pr(self::$routes);
-
-		$requestMethod = $_SERVER['REQUEST_METHOD'];
-
-		$up = explode('/', trim($request->getRequestUri(), '/'));
-		array_shift($up);
-		$uc = count($up);
-		$action = false;
-
-		if (isset(self::$routes[$requestMethod])) {
-			$ri = self::$routes[$requestMethod];
-			$ip = true;
-			$i = 0;
-			$params = [];
-			$secure = false;
-
-			while ($ip) {
-				if (isset($ri[$up[$i]])) {
-					if (!is_array(current($ri))) {
-						if (!isset($up[$i + 1])) {
-							$action = current($ri);
-
-							if (substr($action, -1, 1) === '+') {
-								$secure = true;
-								$action = substr($action, 0, -1);
-							}
-
-							$ip = false;
-						}
-					}
-
-					$ri = $ri[$up[$i]];
-				} else {
-					foreach ($ri as $rk => $rv) {
-						if (preg_match("/$rk/", $up[$i])) {
-							$params[] = $up[$i];
-
-							if (!is_array(current($ri))) {
-								$action = current($ri);
-
-								if (substr($action, -1, 1) === '+') {
-									$secure = true;
-									$action = substr($action, 0, -1);
+								if (preg_match("/$key1/", $uriPart)) {
+									$matched = true;
+									$xPart = $key;
+									$params[] = $uriPart;
+									// exit;
+									break;
 								}
-
-								$ip = false;
+								
 							}
 
-							$ri = $ri[$rk];
-
-							break;
-						} else {
-							$ip = false;
 						}
 					}
-				}
 
-				$i++;
+					// Se a parte da URL não for a última, continua comparando
+					if ($cParts !== $i) {
+						$matched = false;
+						$ri = $ri[$uriPart];
+						$i++;
+						continue;
+					}
 
-				if (!isset($i)) {
-					$ip = false;
+					// Se a url foi encontrada
+					if ($matched) {
+						// echo "existe $uriPart<br />";
+						// $ri = self::$routes[$uriPart];
+
+						// \MonitoLib\Dev::pr($ri[$xPart]);
+						// \MonitoLib\Dev::e($ri[$xPart]['#'][$requestMethod]);
+
+						$xM = $requestMethod;
+
+						// if (!isset($ri[$xPart]['#'][$requestMethod]) || !isset($ri[$xPart]['#']['*'])) {
+						if (!isset($ri[$xPart]['@'][$requestMethod])) {
+							if (isset($ri[$xPart]['@']['*'])) {
+								$xM = '*';
+							} else {
+								http_response_code(405);
+								throw new \Exception('Method Not Allowed!', 405);
+							}
+						}
+
+						if (isset($ri[$xPart]['@'][$xM])) {
+							$action = $ri[$xPart]['@'][$xM];
+							$parts  = explode('@', $action);
+							$class  = $parts[0];
+							$method = $parts[1];
+
+							$secure = false;
+
+							if (substr($method, -1) === '+') {
+								$secure = true;
+								$method = substr($method, 0, -1);
+							}
+
+							if (class_exists($class)) {
+								$class = new $class;
+
+								if (is_callable([$class, $method])) {
+									// Verifica se permite acesso sem credenciais
+									if ($secure) {
+										// Verifica se o usuário tem as credenciais necessárias
+										// if ($isLoggedId) {
+										// 	if (!$hasPower) {
+										// 		throw new \Exception('You don not have right privileges!', 403);
+										// 	}
+										// } else {
+											throw new \Exception('You must send credentials!', 401);
+										// }
+									}
+
+									try {
+										if (PHP_SAPI == 'cli') {
+											$class->process();
+										}
+										$return = $class->$method(...$params);
+									} catch (\Exception $e) {
+										throw new \Exception($e->getMessage(), $e->getCode());
+									}
+								} else {
+									throw new \Exception('Controller method not found!', 5);
+								}
+							} else {
+								throw new \Exception('Controller not found!', 3);
+							}
+						} else {
+							throw new \Exception('Action not found!', 6);
+						}
+					} else {
+						http_response_code(404);
+						throw new \Exception('Route not configured in the server!', 404);
+					}
 				}
+				return $return;
+			} else {
+				throw new \Exception("There's not route configured in server", 7);
 			}
-		}
-
-		if (!$action) {
+		} catch (\Exception $e) {
 			return [
-				'code'    => 2,
-				'message' => 'Route not configured in the server!',
+				'code'    => $e->getCode(),
+				'message' => $e->getMessage(),
 				'debug'   => [
 					'method' => $requestMethod,
 					'url'    => $request->getRequestUri(),
@@ -465,57 +211,12 @@ class Router
 				];
 		}
 
-		$parts  = explode('@', $action);
-		$class  = $parts[0];
-		$method = $parts[1];
-
-		$classCudo = new $class;
-
-		if (class_exists($class)) {
-			$class = new $class;
-
-			if (is_callable([$class, $method])) {
-				// Verifica se permite acesso sem credenciais
-				if ($secure) {
-					// Verifica se o usuário tem as credenciais necessárias
-					// if (!$hasPower)
-					// {
-						$return = [
-							'version' => LDM_APP_VERSION,
-							'code'    => 4, 
-							'message' => 'You don not have right privileges!',
-							];
-						return $return;
-					// }
-				}
-
-				try {
-					$return = $class->$method(...$params);
-				} catch (\Exception $e) {
-					$return = [
-						'code'    => $e->getCode(), 
-						'message' => $e->getMessage(),
-						];
-				}
-			} else {
-				$return = [
-					'code'    => 5, 
-					'message' => 'Controller method not found!',
-					];
-			}
-		} else {
-			$return = [
-				'code'    => 3, 
-				'message' => 'Controller not found!',
-				];
-		}
-
-		$return['version'] = LDM_APP_VERSION;
-
 		return $return;
 	}
+
 	static public function run ($request)
 	{
+		\MonitoLib\Dev::pre(self::$routes);
 		// \MonitoLib\Dev::pre($request);
 		// \MonitoLib\Dev::pre(self::$routes['cli']);
 
@@ -556,10 +257,20 @@ class Router
 
 			if (is_callable([$class, $method])) {
 				try {
+					if (PHP_SAPI == 'cli') {
+
+
+						\MonitoLib\Dev::vde($class);
+
+
+						$class->process();
+					}
 					$return = $class->$method(...$params);
 				} catch (\Exception $e) {
 					$return = [
 						'code'    => $e->getCode(), 
+						'file'    => $e->getFile(), 
+						'line'    => $e->getLine(), 
 						'message' => $e->getMessage(),
 						];
 				}

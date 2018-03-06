@@ -1,7 +1,7 @@
 <?php
-namespace MonitoLib\Database\MySQL;
+namespace MonitoLib\Database\Dao;
 
-class Dao
+class MySQL implements \MonitoLib\Database\Dao
 {
 	protected $dto;
 	protected $dtoName;
@@ -11,11 +11,66 @@ class Dao
 
 	private $namespace = '';
 
+
+	// TODO: to implement
+	public function count ()
+	{
+
+	}
+	public function execute ($sql)
+	{
+
+	}
+	public function list ($filter = null)
+	{
+		$sql = 'SELECT `' . implode('`,`', (is_null($filter) || is_null($filter->getFields()) ? $this->model->getFields() : $filter->getFields()))
+			 . '` FROM ' . $this->model->getTableName() . $filter;
+
+		$stmt = $this->conn->prepare($sql);
+		$stmt->execute();
+
+		$i = 1;
+
+		foreach ($this->model->getFields() as $f) {
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
+			$stmt->bindColumn($i, $$var);
+			$i++;
+		}
+
+		$data = array();
+
+		while ($stmt->fetch()) {
+			$dto = new $this->dtoName;
+
+			foreach ($this->model->getFields() as $f) {
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
+				$set = 'set' . ucfirst($var);
+				$dto->$set($$var);
+			}
+
+			$data[] = $dto;
+		}
+
+		$stmt = NULL;
+
+		return $data;
+	}
+	public function listAll ($filter = null)
+	{
+
+	}
+	public function query ($sql)
+	{
+		$stmt = $this->conn->prepare($sql);
+		$stmt->execute();
+		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+	}
+
 	public function __construct ()
 	{
 		if (is_null($this->conn)) {
-			$connector  = \MonitoLib\Connector::getInstance();
-			$this->conn = $connector->getConnection();
+			$connector  = \MonitoLib\Database\Connector::getInstance();
+			$this->conn = $connector->getConnection()->getConnection();
 		}
 
 		$this->dtoName = str_replace('dao\\','dto\\', get_class($this));
@@ -173,7 +228,7 @@ class Dao
 	{
 		return $this->conn;
 	}
-	public function getByFilter ($filter)
+	public function getByFilter ($filter = null)
 	{
 		$sql = 'SELECT ' . implode(',', (is_null($filter->getFields()) ? $this->model->getFields() : $filter->getFields()))
 			 . ' FROM ' . $this->model->getTableName()
@@ -183,8 +238,7 @@ class Dao
 
 		$i = 1;
 
-		foreach ($this->model->getFields() as $f)
-		{
+		foreach ($this->model->getFields() as $f) {
 			$var = \MonitoLib\Functions::toLowerCamelCase($f);
 			$stmt->bindColumn($i, $$var);
 			$i++;
@@ -192,12 +246,10 @@ class Dao
 
 		$dto = NULL;
 
-		if ($stmt->fetch())
-		{
+		if ($stmt->fetch()) {
 			$dto = $this->dto;
 
-			foreach ($this->model->getFields() as $f)
-			{
+			foreach ($this->model->getFields() as $f) {
 				$var = \MonitoLib\Functions::toLowerCamelCase($f);
 				$set = 'set' . ucfirst($var);
 				$dto->$set($$var);
@@ -214,6 +266,8 @@ class Dao
 			 . '` FROM ' . $this->model->getTableName() . ' WHERE ' . $this->model->getPrimaryKey() . ' = ?';
 
 		// \MonitoLib\Dev::e($sql . $id);
+
+			 // \MonitoLib\Dev::pre($this->conn);
 
 		$stmt = $this->conn->prepare($sql);
 		$stmt->bindParam(1, $id);

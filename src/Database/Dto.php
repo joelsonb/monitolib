@@ -19,7 +19,7 @@ class Dto
 
 		$this->data = $array;
 
-		if (!file_exists(JL_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php")) {
+		if (!file_exists(MONITO_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php")) {
 			$this->createDto($this->keys);
 		}
 	}
@@ -73,7 +73,7 @@ class Dto
 
 		$output .= $prp . $get . $set . "}";
 
-		if (!@file_put_contents(JL_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php", $output)) {
+		if (!@file_put_contents(MONITO_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php", $output)) {
 			throw new \Exception("Error while saving cache data!");
 		}
 	}

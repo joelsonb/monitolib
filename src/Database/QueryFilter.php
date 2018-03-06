@@ -1,7 +1,7 @@
 <?php
-namespace MonitoLib;
+namespace MonitoLib\Database;
 
-class Filter
+class QueryFilter
 {
 	// 1 - MySql
 	// 2 - SQLite
@@ -18,16 +18,17 @@ class Filter
 	private $limitStart  = 0;
 	private $limitOffset = 0;
 	private $sort        = array();
+	private $sql;
 
+	public function __construct ($sqlQuery = null)
+	{
+		$this->sql = $sqlQuery;
+	}
 	public function __toString ()
 	{
 		return $this->render();
 	}
 
-	private function addAnd ($operator, $field, $value, $fixed)
-	{
-		
-	}
 	public function addAndWhere ($field, $operator, $value, $fixed = false)
 	{
 		// ->addAndCriteria('adapters.mac_address', 'like', '58:3f');

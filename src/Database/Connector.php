@@ -7,10 +7,12 @@
  *  
  * @package MonitoLib
  */
-namespace MonitoLib;
+namespace MonitoLib\Database;
 
 class Connector
 {
+	const VERSION = '1.0.0';
+
 	private static $instance;
 
 	private $connection;
@@ -51,7 +53,7 @@ class Connector
 	public static function getInstance ()
 	{
 		if (!isset(self::$instance)) {
-			self::$instance = new \MonitoLib\Connector;
+			self::$instance = new \MonitoLib\Database\Connector;
 		}
 
 		return self::$instance;
@@ -116,20 +118,9 @@ class Connector
 					$obj = new \mysqli($this->connections->$conn->server, $this->connections->$conn->user, $this->connections->$conn->password, $this->connections->$conn->database);
 					break;
 				case 'mysql-pdo':
-					$obj = new \PDO('mysql:host=' . $this->connections->$conn->server 
-						. ';dbname=' . $this->connections->$conn->database 
-						. ';charset=UTF8', $this->connections->$conn->user, 
-						$this->connections->$conn->password);
-					$obj->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-					break;
+					return \MonitoLib\Database\Connector\MySQL::connect($this->connections->$conn);
 				case 'oracle':
-						$obj = oci_connect($this->connections->$conn->user, $this->connections->$conn->password, $this->connections->$conn->server);
-
-						if (!$obj) {
-							$m = oci_error();
-							throw new \Exception($m['message']);
-						}
-					break;
+					return \MonitoLib\Database\Connector\Oracle::connect($this->connections->$conn);
 			}
 
 			$this->dbms = $this->connections->$conn->dbms;

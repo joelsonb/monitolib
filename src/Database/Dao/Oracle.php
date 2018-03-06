@@ -1,19 +1,26 @@
 <?php
-namespace MonitoLib\Database\Oracle;
+namespace MonitoLib\Database\Dao;
 
-class Dao
+class Oracle
 {
 	protected $dto;
 	protected $dtoName;
 	protected $conn;
 	protected $model;
+	private $executeMode = 32;
+	/*
+	* Modes:
+	* OCI_COMMIT_ON_SUCCESS: 32
+	* OCI_DESCRIBE_ONLY: 16
+	* OCI_NO_AUTO_COMMIT: 0
+	*/
 
 	private $namespace = '\\';
 
 	public function __construct ()
 	{
 		if (is_null($this->conn)) {
-			$connector  = \MonitoLib\Connector::getInstance();
+			$connector  = \MonitoLib\Database\Connector::getInstance();
 			$this->conn = $connector->getConnection();
 		}
 
@@ -125,7 +132,7 @@ class Dao
 			}
 		}
 
-		$exe = @oci_execute($stt, OCI_NO_AUTO_COMMIT);
+		$exe = @oci_execute($stt, $this->executeMode);
 
 		if (!$exe)
 		{

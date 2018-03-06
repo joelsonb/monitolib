@@ -1,7 +1,7 @@
 <?php
-namespace MonitoLib\Database\Oracle;
+namespace MonitoLib\Database\Model;
 
-class Model
+class Oracle
 {
 	protected $joins;
 
