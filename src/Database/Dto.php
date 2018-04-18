@@ -73,6 +73,10 @@ class Dto
 
 		$output .= $prp . $get . $set . "}";
 
+		if (!file_exists(MONITO_SITE_PATH . 'cache')) {
+			mkdir(MONITO_SITE_PATH . 'cache');
+		}
+
 		if (!@file_put_contents(MONITO_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php", $output)) {
 			throw new \Exception("Error while saving cache data!");
 		}
@@ -98,6 +102,6 @@ class Dto
 			return $data;
 		}
 
-		return 'new $dto';
+		return null;
 	}
 }

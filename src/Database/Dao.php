@@ -12,6 +12,7 @@ interface Dao
 	public function getByFilter ($filter = null);
 	public function getBySql ($sql);
 	public function getLastId ();
+	// private function getSql ();
 	public function insert ($dto);
 	public function list ($filter = null);
 	public function listAll ($filter = null);

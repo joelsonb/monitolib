@@ -118,6 +118,12 @@ class Functions
 	
 		return $color;
 	}
+	public static function intToDate ($int)
+	{
+		if (preg_match('/[0-9]{8}/', $int)) {
+			return substr($int, 4, 4) . '-' . substr($int, 2, 2) . '-' . substr($int, 0, 2);
+		}
+	}
 	/**
 	 * jLibisset
 	 *
@@ -495,8 +501,13 @@ class Functions
 	}
 	static function stringToFloat ($value)
 	{
+
 		$value = str_replace('.', '', $value);
 		$value = str_replace(',', '.', $value);
+
+		if ($value == '') {
+			return null;
+		}
 
 		return $value;
 	}

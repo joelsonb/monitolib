@@ -1,7 +1,7 @@
 <?php
 namespace MonitoLib\Database\Dao;
 
-class MySQL implements \MonitoLib\Database\Dao
+class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Database\Dao
 {
 	protected $dto;
 	protected $dtoName;
@@ -9,13 +9,85 @@ class MySQL implements \MonitoLib\Database\Dao
 	protected $connection;
 	protected $model;
 
+
+
+
 	private $namespace = '';
 
 
+
+	// public function count () {}
+	// public function delete () {}
+	// public function get () {}
+	// public function insert () {}
+	// public function list () {}
+	// public function truncate () {}
+	// public function update () {}
+
+
+	public function __construct ()
+	{
+		if (is_null($this->conn)) {
+			$connector  = \MonitoLib\Database\Connector::getInstance();
+			$this->conn = $connector->getConnection()->getConnection();
+		}
+
+		$this->dtoName = str_replace('dao\\','dto\\', get_class($this));
+		$model = str_replace('dao\\','model\\', get_class($this));
+
+		if (class_exists($this->dtoName)) {
+			$this->dto   = new $this->dtoName;
+		}
+		if (class_exists($model)) {
+			$this->model = new $model;
+
+			$this->setFields($this->model->getFields());
+			$this->setTableName($this->model->getTableName());
+		}
+
+		$class = get_class($this);
+
+		$this->namespace .= str_replace('dao\\', '', substr($class, 0, strrpos($class, '\\')));
+	}
 	// TODO: to implement
 	public function count ()
 	{
 
+	}
+	public function dataset ()
+	{
+		$data = [];
+
+		$sql = $this->renderCountAllSql();
+		$stmt = $this->conn->prepare($sql);
+		$stmt->execute();
+		$res = $stmt->fetch(\PDO::FETCH_NUM);
+
+		$total = $res[0];
+
+		if ($total > 0) {
+			$sql = $this->renderCountSql();
+			$stmt = $this->conn->prepare($sql);
+			$stmt->execute();
+			$res = $stmt->fetch(\PDO::FETCH_NUM);
+
+			$count = $res[0];
+
+			if ($count > 0) {
+
+				// \MonitoLib\Dev::e($this->renderSql());
+
+				$data = $this->listNOVO();
+			}
+		}
+
+		return [
+			'count' => $count,
+			'data'  => $data,
+			'total' => $total,
+			'page'  => $this->getPage(),
+			'pages' => ceil($count / $this->getLimitOffset())
+		];
 	}
 	public function execute ($sql)
 	{
@@ -25,6 +97,40 @@ class MySQL implements \MonitoLib\Database\Dao
 	{
 		$sql = 'SELECT `' . implode('`,`', (is_null($filter) || is_null($filter->getFields()) ? $this->model->getFields() : $filter->getFields()))
 			 . '` FROM ' . $this->model->getTableName() . $filter;
+
+		$stmt = $this->conn->prepare($sql);
+		$stmt->execute();
+
+		$i = 1;
+
+		foreach ($this->model->getFields() as $f) {
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
+			$stmt->bindColumn($i, $$var);
+			$i++;
+		}
+
+		$data = array();
+
+		while ($stmt->fetch()) {
+			$dto = new $this->dtoName;
+
+			foreach ($this->model->getFields() as $f) {
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
+				$set = 'set' . ucfirst($var);
+				$dto->$set($$var);
+			}
+
+			$data[] = $dto;
+		}
+
+		$stmt = NULL;
+
+		return $data;
+	}
+	public function listNOVO ()
+	{
+		$sql = $this->renderSql();
+		// \MonitoLib\Dev::e($sql);
 
 		$stmt = $this->conn->prepare($sql);
 		$stmt->execute();
@@ -66,23 +172,6 @@ class MySQL implements \MonitoLib\Database\Dao
 		return $stmt->fetchAll(\PDO::FETCH_ASSOC);
 	}
 
-	public function __construct ()
-	{
-		if (is_null($this->conn)) {
-			$connector  = \MonitoLib\Database\Connector::getInstance();
-			$this->conn = $connector->getConnection()->getConnection();
-		}
-
-		$this->dtoName = str_replace('dao\\','dto\\', get_class($this));
-		$model = str_replace('dao\\','model\\', get_class($this));
-
-		$this->dto   = new $this->dtoName;
-		$this->model = new $model;
-		
-		$class = get_class($this);
-
-		$this->namespace .= str_replace('dao\\', '', substr($class, 0, strrpos($class, '\\')));
-	}
 	public function countByFilter ($filter)
 	{
 		$sql = 'SELECT COUNT(*) AS count FROM ' . $this->model->getTableName() . $filter;
@@ -98,6 +187,45 @@ class MySQL implements \MonitoLib\Database\Dao
 		if ($this->model->getTableType() == 'view') {
 			throw new \Exception('A view object is readonly!');
 		}
+
+		$sql  = 'DELETE FROM ' . $this->model->getTableName() . ' WHERE ';
+
+		if (is_array($mix))
+		{
+			if (!is_array($this->model->getPrimaryKey())) {
+				throw new \Exception('Parâmetro incompatível!');
+			}
+
+			foreach ($this->model->getPrimaryKey() as $k => $v) {
+				$sql .= "$k = ? AND";
+			}
+
+			$sql = substr($sql, 0, -3);
+		} else {
+			$sql .= $this->model->getPrimaryKey() . ' = ?';
+			$mix = array($mix);
+		}
+
+		$stmt = $this->conn->prepare($sql);
+
+		$i = 1;
+
+		foreach ($mix as $m) {
+			$stmt->bindParam($i, $m);
+		}
+
+		$stmt->execute;
+		$stmt = NULL;
+	}
+	public function deleteNOVO ($dto = null)
+	{
+		$this->setCommand('DELETE');
+
+		if ($this->model->getTableType() == 'view') {
+			throw new \Exception('A view object is readonly!');
+		}
+
+		\MonitoLib\Dev::e($this->renderSql());
 
 		$sql  = 'DELETE FROM ' . $this->model->getTableName() . ' WHERE ';
 
@@ -216,7 +344,7 @@ class MySQL implements \MonitoLib\Database\Dao
 			$stmt->execute();
 			$stmt = NULL;
 
-			if (is_null($dto->getId())) {
+			if (method_exists($dto, 'setId') && is_null($dto->getId())) {
 				$dto->setId($this->conn->lastInsertId());
 				return $dto;
 			}
@@ -227,6 +355,39 @@ class MySQL implements \MonitoLib\Database\Dao
 	public function getConnection ()
 	{
 		return $this->conn;
+	}
+	public function get ()
+	{
+		$sql = $this->renderSql();
+
+		// \MonitoLib\Dev::e($sql);
+
+		$stmt = $this->conn->prepare($sql);
+		$stmt->execute();
+
+		$i = 1;
+
+		foreach ($this->model->getFields() as $f) {
+			$var = \MonitoLib\Functions::toLowerCamelCase($f);
+			$stmt->bindColumn($i, $$var);
+			$i++;
+		}
+
+		$dto = NULL;
+
+		if ($stmt->fetch()) {
+			$dto = $this->dto;
+
+			foreach ($this->model->getFields() as $f) {
+				$var = \MonitoLib\Functions::toLowerCamelCase($f);
+				$set = 'set' . ucfirst($var);
+				$dto->$set($$var);
+			}
+		}
+
+		$stmt = NULL;
+
+		return $dto;
 	}
 	public function getByFilter ($filter = null)
 	{
@@ -382,62 +543,75 @@ class MySQL implements \MonitoLib\Database\Dao
 		$stmt = $this->conn->prepare($sql);
 		$stmt->execute();
 
-		$i = 1;
-
-		foreach ($this->model->getFields() as $f) {
-			$var = \MonitoLib\Functions::toLowerCamelCase($f);
-			$stmt->bindColumn($i, $$var);
-			$i++;
-		}
-
-		$dto = NULL;
-
-		if ($stmt->fetch()) {
-			$dto = $this->dto;
+		if (!is_null($this->model) && $gambiarra = false) {
+			$i = 1;
 
 			foreach ($this->model->getFields() as $f) {
 				$var = \MonitoLib\Functions::toLowerCamelCase($f);
-				$set = 'set' . ucfirst($var);
-				$dto->$set($$var);
+				$stmt->bindColumn($i, $$var);
+				$i++;
 			}
+
+			$dto = NULL;
+
+			if ($stmt->fetch()) {
+				$dto = $this->dto;
+
+				foreach ($this->model->getFields() as $f) {
+					$var = \MonitoLib\Functions::toLowerCamelCase($f);
+					$set = 'set' . ucfirst($var);
+					$dto->$set($$var);
+				}
+			}
+		} else {
+			return $this->toDataTransferObject($stmt->fetchAll(\PDO::FETCH_ASSOC));
 		}
 
 		$stmt = NULL;
 
 		return $dto;
 	}
-	public function listBySql ($sql)
+	public function listBySql ($sql, $gambiarra = false)
 	{
+		$data = [];
 		$stmt = $this->conn->prepare($sql);
 		$stmt->execute();
 
-		$i = 1;
+		if (!is_null($this->model) && $gambiarra = false) {
+			$i = 1;
 
-		foreach ($this->model->getFields() as $f) {
-			$var = \MonitoLib\Functions::toLowerCamelCase($f);
-			$stmt->bindColumn($i, $$var);
-			$i++;
-		}
-
-		$data = array();
-
-		while ($stmt->fetch())
-		{
-			$dto = new $this->dtoName;
-
-			foreach ($this->model->getFields() as $f)
-			{
+			foreach ($this->model->getFields() as $f) {
 				$var = \MonitoLib\Functions::toLowerCamelCase($f);
-				$set = 'set' . ucfirst($var);
-				$dto->$set($$var);
+				$stmt->bindColumn($i, $$var);
+				$i++;
 			}
 
-			$data[] = $dto;
+			while ($stmt->fetch()) {
+				$dto = new $this->dtoName;
+
+				foreach ($this->model->getFields() as $f) {
+					$var = \MonitoLib\Functions::toLowerCamelCase($f);
+					$set = 'set' . ucfirst($var);
+					$dto->$set($$var);
+				}
+
+				$data[] = $dto;
+			}
+
+			$stmt = NULL;
+			return $data;
+		} else {
+			return $this->toDataTransferObject($stmt->fetchAll(\PDO::FETCH_ASSOC));
+
+			// while ($res = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+			// 	\MonitoLib\Dev::pr($res);
+
+			// 	if (!is_null($dto = $this->toDataTransferObject($res))) {
+			// 		$data[]  = $dto;
+			// 	}
+			// }
 		}
 
-		$stmt = NULL;
-
-		return $data;
 	}
 	public function read ($filter = null)
 	{
@@ -607,13 +781,10 @@ class MySQL implements \MonitoLib\Database\Dao
 	}
 	public function toDataTransferObject ($data, $dtoClass = null)
 	{
-		if (is_null($dtoClass))
-		{
+		if (is_null($dtoClass)) {
 			$dto = new \MonitoLib\Database\Dto($data);
 			return $dto->getData();
-		}
-		else
-		{
+		} else {
 			$dto = new $dtoClass;
 		}
 	}

@@ -65,7 +65,7 @@ class Oracle
 	public static function getInstance ()
 	{
 		if (!isset(self::$instance)) {
-			self::$instance = new \MonitoLib\Connector;
+			self::$instance = new \MonitoLib\Database\Connector;
 		}
 
 		return self::$instance;
@@ -106,52 +106,9 @@ class Oracle
 
 		return $this->connections->$conn;
 	}
-	public function getConnection ($conn = null)
+	public function getConnection ()
 	{
-		if (count($this->connections) == 0) {
-			throw new \Exception('There is no connections!');
-		}
-
-		if (is_null($this->connection) and is_null($conn)) {
-			throw new \Exception('There is no default connection!');
-		}
-
-		if (is_null($conn)) {
-			$conn = $this->connection;
-		}
-
-		if (!isset($this->connections->$conn)) {
-			throw new \Exception("Connection $conn is not configured!");
-		}
-
-		if (is_null($this->connections->$conn->instance)) {
-			switch ($this->connections->$conn->dbms) {
-				case 'mysql':
-					$obj = new \mysqli($this->connections->$conn->server, $this->connections->$conn->user, $this->connections->$conn->password, $this->connections->$conn->database);
-					break;
-				case 'mysql-pdo':
-					$obj = new \PDO('mysql:host=' . $this->connections->$conn->server 
-						. ';dbname=' . $this->connections->$conn->database 
-						. ';charset=UTF8', $this->connections->$conn->user, 
-						$this->connections->$conn->password);
-					$obj->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-					break;
-				case 'oracle':
-						$obj = oci_connect($this->connections->$conn->user, $this->connections->$conn->password, $this->connections->$conn->server);
-
-						if (!$obj) {
-							$m = oci_error();
-							throw new \Exception($m['message']);
-						}
-					break;
-			}
-
-			$this->dbms = $this->connections->$conn->dbms;
-
-			$this->connections->$conn->instance = $obj;
-		}
-
-		return $this->connections->$conn->instance;
+		return $this->conn;
 	}
 	/**
 	 * getConnectionsList

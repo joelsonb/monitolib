@@ -96,7 +96,7 @@ class Connector
 	}
 	public function getConnection ($conn = null)
 	{
-		if (count($this->connections) == 0) {
+		if (count($this->connections) === 0) {
 			throw new \Exception('There is no connections!');
 		}
 

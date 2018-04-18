@@ -21,7 +21,7 @@ class Oracle
 	{
 		if (is_null($this->conn)) {
 			$connector  = \MonitoLib\Database\Connector::getInstance();
-			$this->conn = $connector->getConnection();
+			$this->conn = $connector->getConnection()->getConnection();
 		}
 
 		$this->dtoName = str_replace('dao\\','dto\\', get_class($this));

@@ -11,7 +11,7 @@ class Router
 
 	private static function add ($method, $url, $action, $secure = true)
 	{
-		$parts = explode('/', $url);
+		$parts = explode('/', trim($url, '/'));
 
 		$routes = [];
 		$cf = null;
@@ -85,6 +85,8 @@ class Router
 			if (isset(self::$routes)) {
 				$ri = self::$routes;
 
+				// \MonitoLib\Dev::pr($ri);
+
 				$cParts = count($uriParts);
 				$i = 1;
 
@@ -95,9 +97,6 @@ class Router
 					// Verifica se a parte casa
 					if (isset($ri[$uriPart])) {
 						$matched = true;
-
-						// echo "matched: $uriPart<br />";
-
 						$xPart = $uriPart;
 					} else {
 						foreach ($ri as $key => $value) {
@@ -175,7 +174,7 @@ class Router
 									}
 
 									try {
-										if (PHP_SAPI == 'cli') {
+										if (PHP_SAPI == 'cli' && is_callable([$class, 'process'])) {
 											$class->process();
 										}
 										$return = $class->$method(...$params);
@@ -214,7 +213,7 @@ class Router
 		return $return;
 	}
 
-	static public function run ($request)
+	static public function OLDrun ($request)
 	{
 		\MonitoLib\Dev::pre(self::$routes);
 		// \MonitoLib\Dev::pre($request);
