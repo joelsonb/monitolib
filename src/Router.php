@@ -46,6 +46,10 @@ class Router
 	{
 		self::add('GET', $url, $action, $secure);
 	}	
+	public static function patch ($url, $action, $secure = true)
+	{
+		self::add('PATCH', $url, $action, $secure);
+	}
 	public static function post ($url, $action, $secure = true)
 	{
 		self::add('POST', $url, $action, $secure);
@@ -173,14 +177,19 @@ class Router
 										// }
 									}
 
-									try {
+									// try {
 										if (PHP_SAPI == 'cli' && is_callable([$class, 'process'])) {
 											$class->process();
 										}
 										$return = $class->$method(...$params);
-									} catch (\Exception $e) {
-										throw new \Exception($e->getMessage(), $e->getCode());
-									}
+
+
+										if (is_null($return)) {
+											$return = \MonitoLib\Response::getInstance();
+										}
+									// } catch (\Exception $e) {
+									// 	throw new \Exception($e->getMessage(), $e->getCode());
+									// }
 								} else {
 									throw new \Exception('Controller method not found!', 5);
 								}
@@ -197,9 +206,20 @@ class Router
 				}
 				return $return;
 			} else {
-				throw new \Exception("There's not route configured in server", 7);
+				throw new \Exception("There's not routes configured in server", 7);
 			}
+		} catch (\MonitoLib\Exception\Api $e) {
+			return [
+				'code'    => $e->getCode(),
+				'message' => $e->getMessage(),
+				'errors'  => $e->getErrors(),
+				'debug'   => [
+					'method' => $requestMethod,
+					'url'    => $request->getRequestUri(),
+					],
+				];
 		} catch (\Exception $e) {
+			\MonitoLib\Dev::pre($e);
 			return [
 				'code'    => $e->getCode(),
 				'message' => $e->getMessage(),
@@ -211,126 +231,5 @@ class Router
 		}
 
 		return $return;
-	}
-
-	static public function OLDrun ($request)
-	{
-		\MonitoLib\Dev::pre(self::$routes);
-		// \MonitoLib\Dev::pre($request);
-		// \MonitoLib\Dev::pre(self::$routes['cli']);
-
-		$params = $request->params;
-		// \MonitoLib\Dev::pre($params);
-
-		$parts = explode('/', $request->command);
-		$action = true;
-		$ri = self::$routes['cli'];
-
-		foreach ($parts as $uriPart) {
-			$rk = key($ri);
-			// if (isset($ri[$uriPart])) {
-			if (isset($ri[$uriPart])) {
-				$ri = $ri[$uriPart];
-
-				// \MonitoLib\Dev::pre($ri);
-
-				if (isset($ri['@'])) {
-					$action = $ri['@'];
-				}
-			} else {
-				$action = false;
-				break;
-			}
-		}
-
-		$parts  = explode('@', $action);
-		$class  = $parts[0];
-		$method = $parts[1];
-
-		echo "$class->$method\n";
-
-		// $classCudo = new $class;
-
-		if (class_exists($class)) {
-			$class = new $class($request);
-
-			if (is_callable([$class, $method])) {
-				try {
-					if (PHP_SAPI == 'cli') {
-
-
-						\MonitoLib\Dev::vde($class);
-
-
-						$class->process();
-					}
-					$return = $class->$method(...$params);
-				} catch (\Exception $e) {
-					$return = [
-						'code'    => $e->getCode(), 
-						'file'    => $e->getFile(), 
-						'line'    => $e->getLine(), 
-						'message' => $e->getMessage(),
-						];
-				}
-			} else {
-				$return = [
-					'code'    => 5, 
-					'message' => 'Controller method not found!',
-					];
-			}
-		} else {
-			$return = [
-				'code'    => 3, 
-				'message' => 'Controller not found!',
-				];
-		}
-
-		$return['version'] = 'LDM_APP_VERSION';
-
-		\MonitoLib\Dev::pre($return);
-
-		echo "$action";exit;
-
-		$params = $request->params;
-
-		echo $request->command . "\n";
-
-		if (isset(self::$routes['cli'][$request->command])) {
-			$action = self::$routes['cli'][$request->command];
-			$parts  = explode('@', $action);
-			$class  = $parts[0];
-			$method = $parts[1];
-
-			echo "$class-$method\n";
-
-			$classCudo = new $class;
-
-			if (class_exists($class)) {
-				$class = new $class;
-
-				// \MonitoLib\Dev::pre($class);
-
-				if (is_callable([$class, $method])) {
-					$return = $class->$method(...$params);
-				} else {
-					$return = [
-						'code'    => 5, 
-						'message' => 'Controller method not found!',
-						];
-				}
-			} else {
-				$return = [
-					'code'    => 3, 
-					'message' => 'Controller not found!',
-					];
-			}
-
-
-			// return $return;
-			echo "ran: " . $request->command . "\n";
-		} else {
-			echo "cnf: " . $request->command . "\n";
-		}
 	}
 }

@@ -9,6 +9,8 @@
  */
 namespace MonitoLib\Database;
 
+use \MonitoLib\App;
+
 class Connector
 {
 	const VERSION = '1.0.0';
@@ -21,7 +23,7 @@ class Connector
 
 	private function __construct()
 	{
-		$file = MONITO_CONFIG_DIR . 'database.json';
+		$file = App::getConfigPath() . 'database.json';
 
 		// TODO: validar arquivos
 		if (!is_readable($file)) {

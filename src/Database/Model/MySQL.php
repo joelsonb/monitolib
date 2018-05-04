@@ -91,6 +91,10 @@ class MySQL
 		$class = get_class($this);
 		return substr($class, strrpos($class, '\\') + 1);
 	}
+	public function getPrimaryKeys ()
+	{
+		return $this->keys;
+	}
 	public function getPrimaryKey ()
 	{
 		$keys = 'id';

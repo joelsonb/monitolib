@@ -1,6 +1,9 @@
 <?php
 namespace MonitoLib\Database;
 
+use \MonitoLib\App;
+use \MonitoLib\Functions;
+
 class Dto
 {
 	const VERSION = '1.0.0';
@@ -9,18 +12,22 @@ class Dto
 	 * initial release
 	 */
 
+	private $crc;
+	private $data;
 	private $object;
 
 	public function __construct ($array)
 	{
-		$this->keys = isset($array[0]) && is_array($array[0]) ? array_keys($array[0]) : array_keys($array);
-		sort($this->keys);
-		$this->crc = sha1(serialize($this->keys));
+		if (count($array) > 0) {
+			$this->keys = isset($array[0]) && is_array($array[0]) ? array_keys($array[0]) : array_keys($array);
+			sort($this->keys);
+			$this->crc = sha1(serialize($this->keys));
 
-		$this->data = $array;
+			$this->data = $array;
 
-		if (!file_exists(MONITO_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php")) {
-			$this->createDto($this->keys);
+			if (!file_exists(App::getCachePath() . "dto{$this->crc}.php")) {
+				$this->createDto($this->keys);
+			}
 		}
 	}
 	public function createDto ($array)
@@ -41,7 +48,7 @@ class Dto
 		$set = '';
 
 		foreach ($array as $f) {
-			$f = \MonitoLib\Functions::toLowerCamelCase(strtolower($f));
+			$f = Functions::toLowerCamelCase(strtolower($f));
 			$g = 'get' . ucfirst($f);
 			$s = 'set' . ucfirst($f);
 
@@ -73,11 +80,7 @@ class Dto
 
 		$output .= $prp . $get . $set . "}";
 
-		if (!file_exists(MONITO_SITE_PATH . 'cache')) {
-			mkdir(MONITO_SITE_PATH . 'cache');
-		}
-
-		if (!@file_put_contents(MONITO_SITE_PATH . 'cache' . DIRECTORY_SEPARATOR . "dto{$this->crc}.php", $output)) {
+		if (!@file_put_contents(App::getCachePath() . "dto{$this->crc}.php", $output)) {
 			throw new \Exception("Error while saving cache data!");
 		}
 	}
@@ -85,15 +88,24 @@ class Dto
 	{
 		$dto = "\cache\\dto{$this->crc}";
 
-		if (isset($this->data[0]) && is_array($this->data[0])) {
+		if (isset($this->data[0]) || is_array($this->data)) {
 			$data = [];
+			$xdata = [];
 
-			foreach ($this->data as $res) {
+			if (!isset($this->data[0])) {
+				$xdata[] = $this->data;
+			}
+
+			foreach ($xdata as $res) {
 				$dto = new $dto;
 
 				foreach ($res as $k => $v) {
-					$set = 'set' . ucfirst(\MonitoLib\Functions::toLowerCamelCase($k));
+					$set = 'set' . Functions::toUpperCamelCase($k);
 					$dto->$set($v);
+				}
+
+				if (!isset($this->data[0])) {
+					return $dto;
 				}
 
 				$data[] = $dto;
@@ -101,7 +113,5 @@ class Dto
 
 			return $data;
 		}
-
-		return null;
 	}
 }

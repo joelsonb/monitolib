@@ -25,6 +25,8 @@ class Filter
     private $sort        = array();
     private $sql;
 
+    protected $complete = false; 
+
     public function __construct ($sqlQuery = null)
     {
         $this->sql = $sqlQuery;
@@ -715,6 +717,7 @@ class Filter
 
             if ($this->command == 'SELECT') {
                 $sql .= ' `' . implode('`,`', $this->fields) . '`';
+                $this->complete = true;
             }
 
             $sql .= ' FROM ' . $this->tableName;
@@ -758,6 +761,20 @@ class Filter
         }
 
         return $sql;
+    }
+    protected function reset ()
+    {
+        $this->criteria      = null;
+        $this->countCriteria = null;
+        $this->fixedCriteria = null;
+        $this->command       = 'SELECT';
+        $this->dbms          = 1;
+        $this->page          = 0;
+        $this->limitStart    = 0;
+        $this->limitOffset   = 10;
+        $this->sort          = [];
+        $this->sql           = null;
+        $this->complete      = false; 
     }
     public function renderCountAllSql ()
     {

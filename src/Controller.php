@@ -4,10 +4,12 @@ namespace MonitoLib;
 class Controller
 {
 	protected $request;
+	protected $response;
 
 	public function __construct ()
 	{
 		$this->request = \MonitoLib\Request::getInstance();
+		$this->response = \MonitoLib\Response::getInstance();
 	}
 
 	public function jsonToDto ($dto, $json)
@@ -84,20 +86,19 @@ class Controller
 			return $a;
 		}
 	}
-	public function validateJson ($json, $schemaPath, $coerce = true)
+	public function validateJson (&$json, $schemaPath, $coerce = true)
 	{
 		$validator = new \JsonSchema\Validator;
 		$validator->validate($json, json_decode(file_get_contents($schemaPath)), \JsonSchema\Constraints\Constraint::CHECK_MODE_COERCE_TYPES | \JsonSchema\Constraints\Constraint::CHECK_MODE_APPLY_DEFAULTS);
 
 		if (!$validator->isValid()) {
-		// 	echo "The supplied JSON validates against the schema.\n";
-		// } else {
-			
-			echo "JSON does not validate. Violations:\n";
+			$errors = [];
+
 			foreach ($validator->getErrors() as $error) {
-				echo sprintf("[%s] %s\n", $error['property'], $error['message']);
+				$errors[] = sprintf("[%s] %s\n", $error['property'], $error['message']);
 			}
-			throw new \Exception("Erro ao validar a requisição!", 500001002);
+
+			return $errors;
 		}
 	}
 }
