@@ -4,6 +4,7 @@ namespace MonitoLib;
 
 class App
 {
+    static private $debug = 0;
     static private $instance;
     static private $isWindows;
     static private $cachePath;
@@ -15,6 +16,10 @@ class App
 
     private function __construct ()
     {
+    }
+    public static function getDebug ()
+    {
+        return self::$debug;
     }
     public static function getInstance ()
     {
@@ -81,6 +86,14 @@ class App
     public static function isWindows ()
     {
         return self::$isWindows;
+    }
+    public static function setDebug ($debug)
+    {
+        if (!is_integer($debug) || $debug < 0 || $debug > 2) {
+            throw new \Exception("Wrong debug level: value must be 0, 1 or 2!");
+        }
+
+        self::$debug = $debug;
     }
     public static function setRootPath ($rootPath)
     {

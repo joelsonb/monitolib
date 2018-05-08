@@ -247,6 +247,7 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
 			$stmt->execute();
 			$stmt = NULL;
 
+			// TODO: tratar as chaves primárias
 			if (method_exists($dto, 'setId') && is_null($dto->getId())) {
 				$dto->setId($this->conn->lastInsertId());
 				return $dto;
