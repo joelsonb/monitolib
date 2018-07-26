@@ -38,7 +38,7 @@ class Connector
 		
 		$this->connections = new \stdClass;
 
-		if (count($db) > 0) {
+		if (count((array)$db) > 0) {
 			foreach ($db as $dk => $dv) {
 				//self::$connections->$dk->$dv;
 				$this->connections->$dk = $dv;
@@ -98,7 +98,7 @@ class Connector
 	}
 	public function getConnection ($conn = null)
 	{
-		if (count($this->connections) === 0) {
+		if (count((array)$this->connections) === 0) {
 			throw new \Exception('There is no connections!');
 		}
 

@@ -28,7 +28,7 @@ class Router
             if ($i == $len) {
                 $af[$index] = [
                     '@' => [
-                        $method => $action
+                        $method => $action . ($secure ? '+' : '')
                     ]
                 ];
             } else {
@@ -91,6 +91,8 @@ class Router
         if (isset(self::$routes)) {
             $ri = self::$routes;
 
+            // \MonitoLib\Dev::pre($ri);
+
             $cParts = count($uriParts);
             $i = 1;
 
@@ -98,10 +100,10 @@ class Router
             $xPart = '';
 
             foreach ($uriParts as $uriPart) {
+                $xPart = $uriPart;
                 // Verifica se a parte casa
                 if (isset($ri[$uriPart])) {
                     $matched = true;
-                    $xPart = $uriPart;
                 } else {
                     foreach ($ri as $key => $value) {
                         if (preg_match('/:\{.*\}/', $key)) {
@@ -121,69 +123,68 @@ class Router
                 // Se a parte da URL não for a última, continua comparando
                 if ($cParts !== $i) {
                     $matched = false;
+
+                    if (!isset($ri[$xPart])) {
+                        break;
+                    }
+
                     $ri = $ri[$xPart];
                     $i++;
                     continue;
                 }
+            }
+            // Se a url foi encontrada
+            if ($matched) {
+                // echo "existe $uriPart<br />";
+                // $ri = self::$routes[$uriPart];
 
-                // Se a url foi encontrada
-                if ($matched) {
-                    // echo "existe $uriPart<br />";
-                    // $ri = self::$routes[$uriPart];
+                // \MonitoLib\Dev::pr($ri[$xPart]);
+                // \MonitoLib\Dev::e($ri[$xPart]['#'][$requestMethod]);
 
-                    // \MonitoLib\Dev::pr($ri[$xPart]);
-                    // \MonitoLib\Dev::e($ri[$xPart]['#'][$requestMethod]);
+                $xM = $requestMethod;
 
-                    $xM = $requestMethod;
+                // if (!isset($ri[$xPart]['#'][$requestMethod]) || !isset($ri[$xPart]['#']['*'])) {
+                if (!isset($ri[$xPart]['@'][$requestMethod])) {
+                    if (isset($ri[$xPart]['@']['*'])) {
+                        $xM = '*';
+                    } else {
+                        http_response_code(405);
+                        throw new \Exception('Method Not Allowed!', 405);
+                    }
+                }
 
-                    // if (!isset($ri[$xPart]['#'][$requestMethod]) || !isset($ri[$xPart]['#']['*'])) {
-                    if (!isset($ri[$xPart]['@'][$requestMethod])) {
-                        if (isset($ri[$xPart]['@']['*'])) {
-                            $xM = '*';
-                        } else {
-                            http_response_code(405);
-                            throw new \Exception('Method Not Allowed!', 405);
-                        }
+                if (isset($ri[$xPart]['@'][$xM])) {
+                    $action = $ri[$xPart]['@'][$xM];
+                    $parts  = explode('@', $action);
+                    $class  = $parts[0];
+                    $method = $parts[1];
+                    $secure = false;
+
+                    if (substr($method, -1) === '+') {
+                        $secure = true;
+                        $method = substr($method, 0, -1);
                     }
 
-                    if (isset($ri[$xPart]['@'][$xM])) {
-                        $action = $ri[$xPart]['@'][$xM];
-                        $parts  = explode('@', $action);
-                        $class  = $parts[0];
-                        $method = $parts[1];
-
-                        $secure = false;
-
-                        if (substr($method, -1) === '+') {
-                            $secure = true;
-                            $method = substr($method, 0, -1);
-                        }
-
-                        if (class_exists($class)) {
-                            if (is_callable([$class, $method])) {
-                                if (PHP_SAPI == 'cli' && is_callable([$class, 'process'])) {
-                                    $class->process();
-                                }
-
-                                $router = new \StdClass;
-                                $router->class    = $class;
-                                $router->method   = $method;
-                                $router->params   = $params;
-                                $router->isSecure = $secure;
-                                return $router;
-                            } else {
-                                throw new \Exception('Controller method not found!', 5);
-                            }
+                    if (class_exists($class)) {
+                        if (is_callable([$class, $method])) {
+                            $router = new \StdClass;
+                            $router->class    = $class;
+                            $router->method   = $method;
+                            $router->params   = $params;
+                            $router->isSecure = $secure;
+                            return $router;
                         } else {
-                            throw new \Exception('Controller not found!', 3);
+                            throw new \Exception('Controller method not found!', 5);
                         }
                     } else {
-                        throw new \Exception('Action not found!', 6);
+                        throw new \Exception('Controller not found!', 3);
                     }
                 } else {
-                    http_response_code(404);
-                    throw new \Exception('Route not configured in the server!', 404);
+                    throw new \Exception('Action not found!', 6);
                 }
+            } else {
+                http_response_code(404);
+                throw new \Exception('Route not configured in the server!', 404);
             }
         } else {
             throw new \Exception("There's not routes configured in server", 7);

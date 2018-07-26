@@ -3,6 +3,9 @@ namespace MonitoLib\Database\Dao;
 
 class Filter
 {
+    const FIXED_FILTER = 1;
+    const CHECK_NULL = 2;
+    const RAW_FILTER = 4;
     // 1 - MySql
     // 2 - SQLite
     // 3 - MSSQ
@@ -15,17 +18,16 @@ class Filter
 
 
     private $tableName;
-    private $command = 'SELECT';
-
 
     private $dbms        = 1;
-    private $page        = 0;
+    private $page        = 1;
     private $limitStart  = 0;
-    private $limitOffset = 10;
-    private $sort        = array();
+    private $limitOffset = 0;
+    private $perPage     = 0;
+    private $sort        = [];
     private $sql;
 
-    protected $complete = false; 
+    protected $complete = false;
 
     public function __construct ($sqlQuery = null)
     {
@@ -36,63 +38,19 @@ class Filter
         return $this->render();
     }
 
-    public function addAndWhere ($field, $operator, $value, $fixed = false)
-    {
-        // ->addAndCriteria('adapters.mac_address', 'like', '58:3f');
-        
-        //starts|s
-        //ends|e
-        //like|lk
-        //equal|eq|=
-        //lt
-        //le
-        //rt
-        //re
-
-        switch ($operator)
-        {
-            case '=':
-                break;
-            case '<>':
-                break;
-            case '<':
-                break;
-            case '>':
-                break;
-            case 'like':
-                break;
-            default:
-                throw new \Exception('Operador inválido!');
-                break;
-        }
-
-        $sql = "$field $operator $value AND ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed)
-        {
-            $this->fixedCriteria .= $sql;
-        }
-    }
     public function andIn ($field, $values, $fixed = false)
     {
-        if (count($values) == 0)
-        {
+        if (count($values) == 0) {
             throw new \Exception('Valores inválidos!');
         }
 
         $value = '';
 
-        foreach ($values as $v)
-        {
-            if (is_numeric($v))
-            {
+        foreach ($values as $v) {
+            if (is_numeric($v)) {
                 $value .= $v;
-            }
-            else
-            {
-                $value .= "'$v'";
+            } else {
+                $value .= "'" . $this->escape($v) . "'";
             }
 
             $value .= ',';
@@ -104,8 +62,7 @@ class Filter
 
         $this->criteria .= $sql;
 
-        if ($fixed)
-        {
+        if ($fixed) {
             $this->fixedCriteria .= $sql;
         }
 
@@ -123,19 +80,69 @@ class Filter
 
         return $this;
     }
+    public function startAndGroup ($fixed = false)
+    {
+        if (preg_match('/ (AND|OR) $/', $this->criteria, $m)) {
+            $this->criteria = substr($this->criteria, 0, strlen($m[0]) * -1);
+        }
+
+        $sql = ' AND (';
+
+        $this->criteria .= $sql;
+
+        if ($fixed) {
+            $this->fixedCriteria .= $sql;
+        }
+
+        return $this;
+    }
+    public function startOrGroup ($fixed = false)
+    {
+        if (preg_match('/ (AND|OR) $/', $this->criteria, $m)) {
+            $this->criteria = substr($this->criteria, 0, strlen($m[0]) * -1);
+        }
+
+        $sql = ' OR (';
+
+        $this->criteria .= $sql;
+
+        if ($fixed) {
+            $this->fixedCriteria .= $sql;
+        }
+
+        return $this;
+    }
     public function endGroup ($fixed = false)
     {
-
-        // echo $this->criteria;
-        // exit;
-
-
-        // if ($p = preg_match('/(AND|OR)$/', $this->criteria)) {
-        //  \MonitoLib\Dev::pre($p);
-        // }
-
-
         $sql = ')';
+
+        if (preg_match('/ (AND|OR) $/', $this->criteria, $m)) {
+            $this->criteria = substr($this->criteria, 0, strlen($m[0]) * -1);
+        }
+
+        $this->criteria .= $sql;
+
+        if ($fixed) {
+            $this->fixedCriteria .= $sql;
+        }
+
+        return $this;
+    }
+    private function escape ($value) {
+        return str_replace(array('\\', "\0", "\n", "\r", "'", '"', "\x1a"), array('\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'), $value);
+    }
+    private function addCriteriaParser ($seila, $operator, $field, $value, $fixed = false, $null = false, $raw = false) {
+        if ($null && is_null($value)) {
+            return $this->andIsNull($field, $fixed);
+        }
+
+        $q = $raw ? '' : '\'';
+
+        $sql = "$field $operator $q" . ($raw ? $value : $this->escape($value)) . "$q $seila ";
+
+        if (substr($this->criteria, -1) === ')') {
+            $this->criteria .= " $seila ";
+        }
 
         $this->criteria .= $sql;
 
@@ -147,105 +154,18 @@ class Filter
     }
     public function andEqual ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field = '$value' AND ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('AND', '=', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function andEqualOrNull ($field, $value, $fixed = false)
+    public function andGreaterEqual ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        if (is_null($value)) {
-            return $this->andIsNull($field, $fixed);
-        }
-
-        $sql = "$field = '$value' AND ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('AND', '>=', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function andEqualOrNullRaw ($field, $value, $fixed = false)
+    public function andGreaterThan ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        if (is_null($value)) {
-            return $this->andIsNull($field, $fixed);
-        }
-
-        $sql = "$field = $value AND ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('OR', '>', $field, $value, $fixed, $null, $raw);
         return $this;
-    }
-    public function andEqualRaw ($field, $value, $fixed = false)
-    {
-        $sql = "$field = $value AND ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
-        return $this;
-    }
-    public function andGreaterEqual ($field, $value, $fixed = false)
-    {
-        $sql = "$field >= '$value'";
-
-        $sql .= ' AND ';
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
-        return $this;
-    }
-    public function andGreaterEqualRaw ($field, $value, $fixed = false)
-    {
-        $sql = "$field >= $value";
-
-        $sql .= ' AND ';
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
-        return $this;
-    }
-    public function andGreater ($field, $value, $fixed = false)
-    {
-        $sql = "$field > '$value'";
-
-        $sql .= ' AND ';
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
-        return $this;
-    }
-    public function andGroup ()
-    {
-        
     }
     public function andIsNull ($field, $fixed = false)
     {
@@ -253,18 +173,15 @@ class Filter
 
         $this->criteria .= $sql;
 
-        if ($fixed)
-        {
+        if ($fixed) {
             $this->fixedCriteria .= $sql;
         }
 
         return $this;
     }
-    public function andLessEqual ($field, $value, $fixed = false)
+    public function orIsNull ($field, $fixed = false)
     {
-        $sql = "$field <= '$value'";
-
-        $sql .= ' AND ';
+        $sql = "$field IS NULL OR ";
 
         $this->criteria .= $sql;
 
@@ -274,108 +191,49 @@ class Filter
 
         return $this;
     }
-    public function andLessEqualRaw ($field, $value, $fixed = false)
+    public function andBitAnd ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field <= $value";
-
-        $sql .= ' AND ';
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('AND', '&', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function orEqual ($field, $value, $fixed = false)
+    public function orBitAnd ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field = '$value' OR ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('OR', '&', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function orNotEqual ($field, $value, $fixed = false)
+    public function andLessEqual ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field <> '$value' OR ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('AND', '<=', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function orNotEqualRaw ($field, $value, $fixed = false)
+    public function orEqual ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field <> $value OR ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('OR', '=', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function orLessEqual ($field, $value, $fixed = false, $group = NULL)
+    public function orNotEqual ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field <= '$value'";
-
-        $sql .= ' OR ';
-
-        $this->criteria .= $sql;
-
-        if ($fixed)
-        {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('OR', '<>', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function andLessThan ($field, $value, $fixed = false)
+    public function orLessEqual ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field < '$value'";
-
-        $sql .= ' AND ';
-
-        $this->criteria .= $sql;
-
-        if ($fixed)
-        {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('OR', '<=', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function andNotEqual ($field, $value, $fixed = false)
+    public function orLessThan ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field <> '$value' AND ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('OR', '<', $field, $value, $fixed, $null, $raw);
         return $this;
     }
-    public function andNotEqualRaw ($field, $value, $fixed = false)
+    public function andLessThan ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        $sql = "$field <> $value AND ";
-
-        $this->criteria .= $sql;
-
-        if ($fixed) {
-            $this->fixedCriteria .= $sql;
-        }
-
+        $this->addCriteriaParser('AND', '<', $field, $value, $fixed, $null, $raw);
+        return $this;
+    }
+    public function andNotEqual ($field, $value, $fixed = false, $null = false, $raw = false)
+    {
+        $this->addCriteriaParser('AND', '<>', $field, $value, $fixed, $null, $raw);
         return $this;
     }
     public function andIsNotNull ($field, $fixed = false)
@@ -384,269 +242,152 @@ class Filter
 
         $this->criteria .= $sql;
 
-        if ($fixed)
-        {
+        if ($fixed) {
             $this->fixedCriteria .= $sql;
         }
 
         return $this;
     }
-    public function andLike ($field, $value, $fixed = false)
+    public function orIsNotNull ($field, $fixed = false)
     {
-        $sql = "$field LIKE '%$value%' AND ";
+        $sql = "$field IS NOT NULL OR ";
 
         $this->criteria .= $sql;
 
-        if ($fixed)
-        {
+        if ($fixed) {
             $this->fixedCriteria .= $sql;
         }
 
         return $this;
     }
-    public function addCriteria ($field, $criteria, $fixed = false)
+    public function andLike ($field, $value, $fixed = false, $null = false, $raw = false)
     {
-        // Divide a string com espaços
-        $strings = explode(' ', $criteria);
+        $this->addCriteriaParser('AND', 'LIKE', $field, $value, $fixed, $null, $raw);
+        return $this;
+    }
+    public function andNotLike ($field, $value, $fixed = false, $null = false, $raw = false)
+    {
+        $this->addCriteriaParser('AND', 'NOT LIKE', $field, $value, $fixed, $null, $raw);
+        return $this;
+    }
+    public function andFilter ($field, $value, $type = 'string')
+    {
+        $value = urldecode($value);
 
-        foreach ($strings as $s)
-        {
-            //_vde($criteria);
-
-            $not = false;
-            $sql = '';
-
-            if (substr($s, 0, 1) == '!')
-            {
-                $not = true;
-                $s = substr($s, 1);
-            }
-
-            if (preg_match('/^\*([[:alnum:]]{1,})\*$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' LIKE \'%' . $p[1] . '%\'';
-            }
-            if (preg_match('/^([[:alnum:]]{1,})\*$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' LIKE \'' . $p[1] . '%\'';
-            }
-            if (preg_match('/^\*([.-\/[:alnum:]\:]{1,})$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' LIKE \'%' . $p[1] . '\'';
-            }
-            if (preg_match('/^=([[:alnum:]]{1,})$/', $s, $p))
-            {
-                $sNot = $not ? ' <>' : ' =';
-                $sql = $field . $sNot . ' \'' . $p[1] . '\'';
-
-                //$sNot = $not ? ' NOT LIKE ' : ' LIKE ';
-                //$sql = $field . $sNot . ' \'%' . $p[1] . '%\'';
-            }
-            //if (preg_match('/^([[:alnum:]]{1,})$/', $s, $p))
-            if (preg_match('/^(.*)$/', $s, $p))
-            {
-                //$sNot = $not ? ' <>' : ' =';
-                //$sql = $field . $sNot . ' \'' . $p[1] . '\'';
-
-                $sNot = $not ? ' NOT LIKE ' : ' LIKE ';
-                $sql = $field . $sNot . ' \'%' . $p[1] . '%\'';
-            }
-            //if (preg_match('/^(\d{1,})$/', $criteria, $p))
-            //{
-            //  $sNot = $not ? '<>' : ' = ';
-            //  $sql = $field . $sNot . $p[1];
-            //}
-            if (preg_match('/^>(\d{1,})$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' > ' . $p[1];
-            }
-            if (preg_match('/^<(\d{1,})$/', $criteria, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' < ' . $p[1];
-            }
-            if ($criteria === true)
-            {
-                $sql = $field . ' IS NOT NULL ';
-            }
-            if ($criteria === false or is_null($criteria))
-            {
-                $sql = $field . ' IS NULL ';
-            }
-    
-            if ($sql != '')
-            {
-                $sql .= ' AND ';
-    
-                $this->criteria .= $sql;
-        
-                if ($fixed)
-                {
-                    $this->fixedCriteria .= $sql;
+        switch (strtolower($type)) {
+            case 'number':
+                // Verifica se é intervalo
+                if (preg_match('/^([0-9.]+)-([0-9.]+)$/', $value, $m)) {
+                    $this->criteria .= "$field BETWEEN $m[1] AND $m[2] AND ";
+                    break;
                 }
-            }
+
+                // Verifica se tem algum modificador
+                if (preg_match('/^([><=!]{1,2})?([0-9]+)$/', $value, $m)) {
+                    switch ($m[1]) {
+                        case '>':
+                            $method = 'andGreaterThan';
+                            break;
+                        case '<':
+                            $method = 'andLessThan';
+                            break;
+                        case '>=':
+                            $method = 'andGreaterEqual';
+                            break;
+                        case '<=':
+                            $method = 'andLessEqual';
+                            break;
+                        case '<>':
+                        case '!':
+                            $method = 'andNotEqual';
+                            break;
+                        default:
+                            $method = 'andEqual';
+                            break;
+                    }
+
+                    $this->$method($field, $m[2]);
+                    break;
+                }
+
+                // Verifica se é lista
+                if (preg_match('/^[0-9.,\s]+$/', $value, $m)) {
+                    $this->andIn($field, explode(',', $m[0]));
+                }
+
+                break;
+            case 'string':
+                if (substr($value, 0, 1) === '"' && substr($value, -1) === '"') {
+                    $this->andEqual($field, substr($value, 1, -1));
+                } else {
+                    $strings = explode(' ', $value);
+
+                    foreach ($strings as $s) {
+                        $a = '%';
+                        $b = '%';
+                        $m = 'andLike';
+                        $f = substr($s, 0, 1);
+                        $l = substr($s, -1);
+
+                        if ($f === '"' && $l === '"') {
+                            $s = substr($s, 1, -1);
+                        }
+
+                        if ($f === '!') {
+                            $m = 'andNotLike';
+                            $s = substr($s, 1);
+                            $f = substr($s, 0, 1);
+                        }
+
+                        if ($f === '%') {
+                            $f = substr($s, 0, 1);
+                        } else {
+                            $a = '';
+                        }
+
+                        if ($l === '%') {
+                            $s = substr($s, 0, -1);
+                        } else {
+                            $b = '';
+                        }
+
+                        if ($a === $b) {
+                            $a = $b = '%';
+                        }
+
+                        $this->$m($field, "{$a}{$s}{$b}");
+                    }
+                }
+                break;
         }
 
         return $this;
     }
-    public function addIntegerCriteria ($field, $criteria, $fixed = false)
+    public function orderBy ($field, $direction = 'ASC')
     {
-        // Divide a string com espaços
-        //$strings = explode(' ', $criteria);
-
-        $s = $criteria;
-        
-        //foreach ($strings as $s)
-        //{
-            //_vde($criteria);
-
-            $not = false;
-            $sql = '';
-
-            if (substr($s, 0, 1) == '!')
-            {
-                $not = true;
-                $s = substr($s, 1);
-            }
-
-            if (preg_match('/^>(\d{1,})$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' > ' . $p[1];
-            }
-            if (preg_match('/^<(\d{1,})$/', $criteria, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' < ' . $p[1];
-            }
-            if (is_numeric($criteria))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' = ' . $s;
-            }
-
-    
-            if ($sql != '')
-            {
-                $sql .= ' AND ';
-    
-                $this->criteria .= $sql;
-        
-                if ($fixed)
-                {
-                    $this->fixedCriteria .= $sql;
-                }
-            }
-        //}
-
+        $this->sort[$field] = strtoupper($direction);
         return $this;
     }
-    public function addCriteriaNEW ($field, $criteria, $fixed = false)
-    {
-        // Divide a string com espaços
-        $strings = explode(' ', $criteria);
-
-        foreach ($strings as $s)
-        {
-            //_vde($criteria);
-
-            $not = false;
-            $sql = '';
-
-            if (substr($s, 0, 1) == '!')
-            {
-                $not = true;
-                $s = substr($s, 1);
-            }
-
-            if (preg_match('/^\*([[:alnum:]]{1,})\*$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' LIKE \'%' . $p[1] . '%\'';
-            }
-            if (preg_match('/^([[:alnum:]]{1,})\*$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' LIKE \'' . $p[1] . '%\'';
-            }
-            if (preg_match('/^\*([.-\/[:alnum:]]{1,})$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' LIKE \'%' . $p[1] . '\'';
-            }
-            if (preg_match('/^=([[:alnum:]]{1,})$/', $s, $p))
-            {
-                $sNot = $not ? ' <>' : ' =';
-                $sql = $field . $sNot . ' \'' . $p[1] . '\'';
-
-                //$sNot = $not ? ' NOT LIKE ' : ' LIKE ';
-                //$sql = $field . $sNot . ' \'%' . $p[1] . '%\'';
-            }
-            if (preg_match('/^([[:alnum:]]{1,})$/', $s, $p))
-            {
-                //$sNot = $not ? ' <>' : ' =';
-                //$sql = $field . $sNot . ' \'' . $p[1] . '\'';
-
-                $sNot = $not ? ' NOT LIKE ' : ' LIKE ';
-                $sql = $field . $sNot . ' \'%' . $p[1] . '%\'';
-            }
-            //if (preg_match('/^(\d{1,})$/', $criteria, $p))
-            //{
-            //  $sNot = $not ? '<>' : ' = ';
-            //  $sql = $field . $sNot . $p[1];
-            //}
-            if (preg_match('/^>(\d{1,})$/', $s, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' > ' . $p[1];
-            }
-            if (preg_match('/^<(\d{1,})$/', $criteria, $p))
-            {
-                $sNot = $not ? ' NOT' : '';
-                $sql = $field . $sNot . ' < ' . $p[1];
-            }
-            if ($criteria === true)
-            {
-                $sql = $field . ' IS NOT NULL ';
-            }
-            if ($criteria === false or is_null($criteria))
-            {
-                $sql = $field . ' IS NULL ';
-            }
-    
-            if ($sql != '')
-            {
-                $sql .= ' AND ';
-    
-                $this->criteria .= $sql;
-        
-                if ($fixed)
-                {
-                    $this->fixedCriteria .= $sql;
-                }
-            }
-        }
-
-        return $this;
-    }
-    public function orderBy ($field, $direction = 'asc')
-    {
-        $direction = $direction == 0 ? 'ASC' : 'DESC';
-        $this->sort[$field] = $direction;
-        return $this;
-    }
-    public function renderSql ()
+    public function renderSql ($command = 'SELECT')
     {
         if (is_null($this->sql)) {
-            $sql = $this->command;
+            switch ($command) {
+                case 'SELECT':
+                    $sql = $command;
 
-            if ($this->command == 'SELECT') {
-                $sql .= ' `' . implode('`,`', $this->fields) . '`';
-                $this->complete = true;
+                    if ($this->dbms === 1) {
+                        $sql .= ' `' . implode('`,`', $this->fields) . '`';
+                    } else {
+                        $sql .= ' ' . implode(',', $this->fields);
+                    }
+                    $this->complete = true;
+                    break;
+                case 'COUNT':
+                    $sql = 'SELECT COUNT(*) AS count';
+                    break;
+                default:
+                    $sql = $command;
+                    break;
             }
 
             $sql .= ' FROM ' . $this->tableName;
@@ -679,13 +420,10 @@ class Filter
 
             $sql = substr($sql, 0, -2);
         }
-    
-        if ($this->page > 0) {
+
+        if ($this->perPage > 0) {
             if ($this->dbms == 1) {
-                if ($this->limitOffset > 0) {
-                    $this->limitStart = ($this->page - 1) * $this->limitOffset;
-                    $sql .= ' LIMIT ' . $this->limitStart . ',' . $this->limitOffset;
-                }
+                $sql .= ' LIMIT ' . (($this->page - 1) * $this->perPage) . ',' . $this->perPage;
             }
         }
 
@@ -697,16 +435,29 @@ class Filter
         $this->countCriteria = null;
         $this->fixedCriteria = null;
         $this->command       = 'SELECT';
-        $this->dbms          = 1;
-        $this->page          = 0;
+        $this->page          = 1;
         $this->limitStart    = 0;
-        $this->limitOffset   = 10;
+        $this->limitOffset   = 0;
         $this->sort          = [];
         $this->sql           = null;
-        $this->complete      = false; 
+        $this->complete      = false;
     }
     public function renderCountAllSql ()
     {
+        $request = \MonitoLib\Request::getInstance();
+
+        if (!is_null($page = $request->getQueryString('page'))) {
+            if (preg_match('/^[0-9]{1,}$/', $page)) {
+                $this->page = $page;
+            }
+        }
+
+        if (!is_null($perPage = $request->getQueryString('perPage'))) {
+            if (preg_match('/^[0-9]{1,}$/', $perPage)) {
+                $this->perPage = $perPage;
+            }
+        }
+
         return 'SELECT COUNT(*) FROM ' . $this->tableName . $this->getFixedCriteria();
     }
     public function renderCountSql ()
@@ -717,8 +468,7 @@ class Filter
     {
         $sql = '';
 
-        if (!is_null($this->criteria))
-        {
+        if (!is_null($this->criteria)) {
             $sql .= ' WHERE ' . substr($this->criteria, 0, -4);
         }
 
@@ -728,8 +478,7 @@ class Filter
     {
         $sql = '';
 
-        if (!is_null($this->fixedCriteria))
-        {
+        if (!is_null($this->fixedCriteria)) {
             $sql .= ' WHERE ' . substr($this->fixedCriteria, 0, -4);
         }
 
@@ -753,15 +502,20 @@ class Filter
     public function setPage ($page)
     {
         $this->page = $page;
-        
-        
 
-        
+
+
+
         //if ()
         //{
             $this->limitStart = ($page - 1) * $this->limitOffset;
         //}
-        
+
+        return $this;
+    }
+    public function setPerPage ($perPage)
+    {
+        $this->perPage = $perPage;
         return $this;
     }
     public function getCriteria ()
@@ -784,96 +538,17 @@ class Filter
     {
         return $this->page;
     }
+    public function getPerPage ()
+    {
+        return $this->perPage;
+    }
     public function getName ()
     {
         return $this->name;
     }
-    //public function getFilter ()
-    //{
-    //  return $this->filter;
-    //}
-    public function getValue ()
-    {
-        return $this->value;
-        $v = $this->value;
-        $r = '';
-        $o= '=';
-
-        if (preg_match('/[[:alnum:]]\*$/', $v))
-        {
-            $v  = substr($v, 0, -1) . '%';
-            //$r .= $v . '%';
-            $o = 'LIKE';
-        }
-        if (preg_match('/^\*[[:alnum:]]/', $v))
-        {
-            $v  = '%' . substr($v, 1);
-            //$v = '%' . $v;
-            $o = 'LIKE';
-        }
-        
-        
-        /*
-        if (is_numeric($v))
-        {
-            $s .= $k . ' = ' . $v . ' AND ';
-        }
-        if (preg_match('/^\>[0-9]{1,}$/', $v))
-        {
-            $s .= $k . ' >= ' . substr($v, 1) . ' AND ';
-        }
-        if (preg_match('/^\<[0-9]{1,}$/', $v))
-        {
-            $s .= $k . ' <= ' . substr($v, 1) . ' AND ';
-        }
-        if (preg_match('/^[0-9]{1,}-[0-9]{1,}$/', $v))
-        {
-            $x  = explode('-', $v);
-            $s .= $k . ' BETWEEN ' . $x[0] . ' AND ' . $x[1] . ' AND ';
-        }
-        if (preg_match('/^[a-z]{1,}\*$/', $v))
-        {
-            $s .= $k . ' LIKE \'' . substr($v, 0, (strlen($v) - 1)) . '%\' AND ';
-        }
-        if (preg_match('/^[a-z]{1,}$/', $v))
-        {
-            $s .= $k . ' LIKE \'%' . $v . '%\' AND ';
-        }
-        //if (preg_match('/[0-9a-z]/', $v))
-        //{
-            //$v  = is_numeric($v) ? $v : "'$v'";
-            //$s .= $f . ' = ' . $v . ' AND ';
-        //}
-        
-        //echo count($x) . '<br />';
-            
-
-        if($s != '')
-        {
-            $s = preg_replace('/AND $/', '', $s);
-            $s = ' ' . ($append ? $type : 'WHERE') . ' ' . $s;
-        }
-        
-        //echo $s;exit;*/
-
-        return "$o '$v'";
-    }
-    public function like ($value)
-    {
-        $this->value  = $value;
-        $this->filter = "LIKE '%$value%'";
-    }
     public function setSql ($sql)
     {
         $this->sql = $sql;
-        return $this;
-    }
-    public function setValue ($value)
-    {
-        $this->value = $value;
-    }
-    public function setCommand ($command) {
-        $this->command = $command;
         return $this;
     }
     public function setFields ($fields) {

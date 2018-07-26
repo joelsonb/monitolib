@@ -20,14 +20,21 @@ class Oracle
 	private $connection;
 	private $connections = [];
 	private $dbms;
+    private $executeMode = 32;
+    /*
+    * Modes:
+    * OCI_COMMIT_ON_SUCCESS: 32
+    * OCI_DESCRIBE_ONLY: 16
+    * OCI_NO_AUTO_COMMIT: 0
+    */
 
-	private function __construct($parameters)
+	private function __construct ($parameters)
 	{
 		$this->conn = @oci_connect($parameters->user, $parameters->password, $parameters->server);
 
 		if (!$this->conn) {
 			$m = oci_error();
-			throw new \Exception($m['message']);
+			throw new \Exception('Error connecting to Oracle database: ' . $m['message']);
 		}
 	}
 	/**
@@ -85,6 +92,10 @@ class Oracle
 				//unset(self::$connections->$conn);
 			}
 		}
+	}
+	public function execute ($stt)
+	{
+		return @oci_execute($stt, $this->executeMode);
 	}
 	public function getConfig ($conn = NULL)
 	{

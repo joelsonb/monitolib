@@ -66,6 +66,10 @@ class Oracle
 	//	
 	//	\jLib\Dev::vde(get_object_vars(new $class));
 	//}
+	public function getPrimaryKeys ()
+	{
+		return $this->keys;
+	}
 	public function getTableName ()
 	{
 		return $this->tableName;

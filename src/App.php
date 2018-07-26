@@ -11,6 +11,7 @@ class App
     static private $configPath;
     static private $logPath;
     static private $rootPath;
+    static private $rootUrl;
     static private $storagePath;
     static private $tmpPath;
 
@@ -77,6 +78,10 @@ class App
     }
     public static function getRootPath ()
     {
+        return self::$rootUrl;
+    }
+    public static function getRootUrl ()
+    {
         return self::$rootPath;
     }
     public static function getTmpPath ($relativePath = null)
@@ -86,6 +91,9 @@ class App
     public static function isWindows ()
     {
         return self::$isWindows;
+    }
+    public static function now () {
+        return date('Y-m-d H:i:s');
     }
     public static function setDebug ($debug)
     {
@@ -99,6 +107,12 @@ class App
     {
         if (is_null(self::$rootPath)) {
             self::$rootPath = $rootPath;
+        }
+    }
+    public static function setRootUrl ($rootUrl)
+    {
+        if (is_null(self::$rootUrl)) {
+            self::$rootUrl = $rootUrl;
         }
     }
 }

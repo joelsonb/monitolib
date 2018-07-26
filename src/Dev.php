@@ -41,8 +41,26 @@ class Dev
 	{
 		self::pr($a, true);
 	}
-	public static function vd ($a, $e = false)
+	private static function sliceArrayDepth ($array, $depth = 0)
 	{
+	    foreach ($array as $key => $value) {
+	        if (is_array($value)) {
+	            if ($depth > 0) {
+	                $array[$key] = self::sliceArrayDepth($value, $depth - 1);
+	            } else {
+	                unset($array[$key]);
+	            }
+	        }
+	    }
+
+	    return $array;
+	}
+	public static function vd ($a, $depth = 0, $e = false)
+	{
+		if ($depth > 0) {
+			$a = self::sliceArrayDepth($a, $depth = 0);
+		}
+
 		echo self::isCli() ? '' : '<pre>';
 		var_dump($a);
 	
@@ -52,8 +70,8 @@ class Dev
 			echo self::isCli() ? "\n" : '</pre>';
 		}
 	}
-	public static function vde ($a)
+	public static function vde ($a, $depth = 0)
 	{
-		self::vd($a, true);
+		self::vd($a, $depth, true);
 	}
 }
