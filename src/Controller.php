@@ -4,10 +4,12 @@ namespace MonitoLib;
 class Controller
 {
 	protected $request;
+	protected $response;
 
 	public function __construct ()
 	{
 		$this->request = \MonitoLib\Request::getInstance();
+		$this->response = \MonitoLib\Response::getInstance();
 	}
 
 	public function jsonToDto ($dto, $json)
@@ -82,6 +84,26 @@ class Controller
 		{
 			$a[$k] = (is_array($v) || is_object($v)) ? $this->toArray($v): $v; 
 			return $a;
+		}
+	}
+	public function validateJson (&$json, $schemaPath, $coerce = true)
+	{
+		if (!file_exists($schemaPath)) {
+			throw new \MonitoLib\Exception\InternalError("Schema $schemaPath not found!");
+		}
+
+		$validator = new \JsonSchema\Validator;
+		$validator->validate($json, json_decode(file_get_contents($schemaPath)), \JsonSchema\Constraints\Constraint::CHECK_MODE_COERCE_TYPES | \JsonSchema\Constraints\Constraint::CHECK_MODE_APPLY_DEFAULTS);
+
+		if (!$validator->isValid()) {
+			$errors = [];
+
+			foreach ($validator->getErrors() as $error) {
+				\MonitoLib\Dev::pre($error);
+				$errors[] = sprintf("[%s] %s\n", $error['property'], $error['message']);
+			}
+
+			return $errors;
 		}
 	}
 }

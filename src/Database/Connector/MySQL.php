@@ -61,7 +61,7 @@ class MySQL
 	public static function getInstance ()
 	{
 		if (!isset(self::$instance)) {
-			self::$instance = new \MonitoLib\Connector;
+			self::$instance = new \MonitoLib\Database\Connector;
 		}
 
 		return self::$instance;

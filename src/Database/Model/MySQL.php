@@ -58,18 +58,13 @@ class MySQL
 	{
 		$fields = array();
 
-		if (isset($this->fields[0]))
-		{
+		if (isset($this->fields[0])) {
 			return $this->fields;
-		}
-		else
-		{
-			foreach ($this->fields as $fk => $fv)
-			{
+		} else {
+			foreach ($this->fields as $fk => $fv) {
 				$fv = \MonitoLib\Functions::ArrayMergeRecursive($this->defaults, $fv);
 	
-				if (!$fv['auto'])
-				{
+				if (!$fv['auto']) {
 					$fields[] = $fk;
 				}
 			}
@@ -81,7 +76,28 @@ class MySQL
 	{
 		return implode(',', $this->getFields());
 	}
+	public function getFieldsSerialized ($alias = null, $prefix = true)
+	{
+		$fields = '';
 
+		foreach ($this->fields as $f => $v) {
+			if (!is_null($alias)) {
+				$fields .= $alias . '.';
+			}
+
+			$fields .= $f;
+
+			if ($prefix === true || $prefix != '') {
+				$fields .= ' AS ' . $alias . '_' . $f;
+			}
+
+			$fields .= ', ';
+		}
+
+		$fields = substr($fields, 0, -2);
+
+		return $fields;
+	}
 	public function getJoins ()
 	{
 		return $this->joins;
@@ -90,6 +106,10 @@ class MySQL
 	{
 		$class = get_class($this);
 		return substr($class, strrpos($class, '\\') + 1);
+	}
+	public function getPrimaryKeys ()
+	{
+		return $this->keys;
 	}
 	public function getPrimaryKey ()
 	{
