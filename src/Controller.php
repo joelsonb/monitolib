@@ -86,6 +86,10 @@ class Controller
 			return $a;
 		}
 	}
+	public function toNull ($value)
+	{
+		return $value === '' ? null : $value;
+	}
 	public function validateJson (&$json, $schemaPath, $coerce = true)
 	{
 		if (!file_exists($schemaPath)) {
@@ -99,7 +103,7 @@ class Controller
 			$errors = [];
 
 			foreach ($validator->getErrors() as $error) {
-				\MonitoLib\Dev::pre($error);
+				// \MonitoLib\Dev::pre($error);
 				$errors[] = sprintf("[%s] %s\n", $error['property'], $error['message']);
 			}
 

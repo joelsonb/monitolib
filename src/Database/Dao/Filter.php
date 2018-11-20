@@ -26,6 +26,7 @@ class Filter
     private $perPage     = 0;
     private $sort        = [];
     private $sql;
+    private $sqlCount;
 
     protected $complete = false;
 
@@ -387,14 +388,21 @@ class Filter
                     $this->complete = true;
                     break;
                 case 'COUNT':
-                    $sql = 'SELECT COUNT(*) AS count';
+                    // TODO: mudar completamente essa bizarrice
+                    if (is_null($this->sqlCount)) {
+                        $sql = 'SELECT COUNT(*) AS count';
+                    } else {
+                        $sql = $this->sqlCount;
+                    }
                     break;
                 default:
                     $sql = $command;
                     break;
             }
 
-            $sql .= ' FROM ' . $this->tableName;
+            if (is_null($this->sqlCount)) {
+                $sql .= ' FROM ' . $this->tableName;
+            }
 
         } else {
             $sql = $this->sql;
@@ -462,11 +470,19 @@ class Filter
             }
         }
 
-        return 'SELECT COUNT(*) FROM ' . $this->tableName . $this->getFixedCriteria();
+        if (is_null($sql = $this->sqlCount)) {
+            $sql = 'SELECT COUNT(*) FROM ' . $this->tableName;
+        }
+
+        return $sql . $this->getFixedCriteria();
     }
     public function renderCountSql ()
     {
-        return 'SELECT COUNT(*) FROM ' . $this->tableName . $this->getCountCriteria();
+        if (is_null($sql = $this->sqlCount)) {
+            $sql = 'SELECT COUNT(*) FROM ' . $this->tableName;
+        }
+
+        return $sql . $this->getCountCriteria();
     }
     public function getCountCriteria ()
     {
@@ -553,6 +569,11 @@ class Filter
     public function setSql ($sql)
     {
         $this->sql = $sql;
+        return $this;
+    }
+    public function setSqlCount ($sqlCount)
+    {
+        $this->sqlCount = $sqlCount;
         return $this;
     }
     public function setFields ($fields) {

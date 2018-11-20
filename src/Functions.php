@@ -616,12 +616,9 @@ class Functions
 	 */
 	static function zeroLeftPad ($number, $size)
 	{
-		if (is_numeric($number))
-		{
+		if (is_numeric($number)) {
 			return str_pad($number, $size, '0', STR_PAD_LEFT);
-		}
-		else
-		{
+		} else {
 			return $number;
 		}
 	}
