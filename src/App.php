@@ -34,7 +34,7 @@ class App
         $directoryPath = $directory . 'Path'; 
 
         if (is_null(self::$$directoryPath)) {
-            $path = self::$rootPath . $directory . '/';
+            $path = self::$rootPath . $directory . DIRECTORY_SEPARATOR;
 
             if (!file_exists($path)) {
                 if (!mkdir($path, 0755, true)) {
@@ -46,7 +46,7 @@ class App
         }
 
         if (!is_null($relativePath)) {
-            $relativePath = self::$$directoryPath . $relativePath . '/';
+            $relativePath = self::$$directoryPath . $relativePath . DIRECTORY_SEPARATOR;
 
             if (!file_exists($relativePath)) {
                 if (!mkdir($relativePath, 0755, true)) {
