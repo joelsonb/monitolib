@@ -78,7 +78,7 @@ class Connector
 	}
 	public function getConfig ($conn = NULL)
 	{
-		if (count($this->connections) == 0) {
+		if (count((array)$this->connections) == 0) {
 			throw new \Exception('There is no connections!');
 		}
 
