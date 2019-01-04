@@ -1,102 +1,38 @@
 <?php
 namespace MonitoLib\Database\Model;
 
-class MySQL
+class MySQL extends \MonitoLib\Database\Model\Model
 {
 	protected $tableType = 'table';
 	protected $joins;
-	private $defaults = array(
-							  'auto'             => false,
-							  'charset'          => 'utf8',
-							  'collation'        => 'utf8_general_ci',
-							  'defaultValue'     => null,
-							  'label'            => '',
-							  'maxValue'         => 0,
-							  'minValue'         => 0,
-							  'numericPrecision' => null,
-							  'numericScale'     => null,
-							  'primary'          => false,
-							  'required'         => false,
-							  'type'             => 'varchar',
-							  'unique'           => false,
-							  'unsigned'         => false,
-							  );
+	protected $defaults = [
+		'auto'             => false,
+		'charset'          => 'utf8',
+		'collation'        => 'utf8_general_ci',
+		'defaultValue'     => null,
+		'label'            => '',
+		'maxValue'         => 0,
+		'minValue'         => 0,
+		'numericPrecision' => null,
+		'numericScale'     => null,
+		'primary'          => false,
+		'required'         => false,
+		'type'             => 'varchar',
+		'unique'           => false,
+		'unsigned'         => false,
+	];
 
-	public function addValidation ($field)
+	public function getFieldList ()
 	{
-		if (in_array($field, $this->fields))
-		{
-			//$v = new \jLib\ValidationRule;
-		}
+		return implode(',', $this->listFields());
 	}
-	public function getDefaults ($option = null)
-	{
-		if (is_null($option))
-		{
-			return $this->defaults;
-		}
-		else
-		{
-			if (isset($this->defaults[$option]))
-			{
-				return $this->defaults[$option];
-			}
-
-			throw new \Exception("There's no '$option' option in defaults options");
-		}
-	}
-	public function getFields ()
+	public function listFields ()
 	{
 		if (isset($this->fields[0])) {
-			//\jLib\Dev::pre($this->fields);
 			return $this->fields;
 		} else {
 			return array_keys($this->fields);
 		}
-	}
-	public function getFieldsInsert ()
-	{
-		$fields = array();
-
-		if (isset($this->fields[0])) {
-			return $this->fields;
-		} else {
-			foreach ($this->fields as $fk => $fv) {
-				$fv = \MonitoLib\Functions::ArrayMergeRecursive($this->defaults, $fv);
-	
-				if (!$fv['auto']) {
-					$fields[] = $fk;
-				}
-			}
-		}
-
-		return $fields;
-	}
-	public function getFieldList ()
-	{
-		return implode(',', $this->getFields());
-	}
-	public function getFieldsSerialized ($alias = null, $prefix = true)
-	{
-		$fields = '';
-
-		foreach ($this->fields as $f => $v) {
-			if (!is_null($alias)) {
-				$fields .= $alias . '.';
-			}
-
-			$fields .= $f;
-
-			if ($prefix === true || $prefix != '') {
-				$fields .= ' AS ' . $alias . '_' . $f;
-			}
-
-			$fields .= ', ';
-		}
-
-		$fields = substr($fields, 0, -2);
-
-		return $fields;
 	}
 	public function getJoins ()
 	{
@@ -107,39 +43,7 @@ class MySQL
 		$class = get_class($this);
 		return substr($class, strrpos($class, '\\') + 1);
 	}
-	public function getPrimaryKeys ()
-	{
-		return $this->keys;
-	}
-	public function getPrimaryKey ()
-	{
-		$keys = 'id';
 
-		if (!is_null($this->keys))
-		{
-			$keys = NULL;
-
-			foreach ($this->keys as $k)
-			{
-				$keys .= "$k,";
-			}
-
-			$keys = substr($keys, 0, -1);
-		}
-
-		return $keys;
-	}
-	//public function getFields ()
-	//{
-	//	$class = get_class($this);
-	//	
-	//	$reflect = new \ReflectionClass($class);
-	//	$props   = $reflect->getProperties();
-	//	
-	//	\jLib\Dev::pre($props);
-	//	
-	//	\jLib\Dev::vde(get_object_vars(new $class));
-	//}
 	public function getTableName ()
 	{
 		return $this->tableName;

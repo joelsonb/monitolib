@@ -1,7 +1,7 @@
 <?php
 namespace MonitoLib\Database\Dao;
 
-class Filter
+class Query
 {
     const FIXED_FILTER = 1;
     const CHECK_NULL = 2;
@@ -15,9 +15,11 @@ class Filter
     private $countCriteria;
     private $fixedCriteria;
     private $fields;
-
+    private $reseted = false;
 
     private $tableName;
+    private $model;
+    private $selectedFields;
 
     private $dbms        = 1;
     private $page        = 1;
@@ -150,10 +152,14 @@ class Filter
         }
 
         $this->criteria .= $sql;
+        $this->countCriteria .= $sql;
 
         if ($fixed === true || $fixed & self::FIXED_FILTER) {
             $this->fixedCriteria .= $sql;
         }
+
+        // \MonitoLib\Dev::vd($this->criteria);
+
 
         return $this;
     }
@@ -280,7 +286,9 @@ class Filter
         $value = urldecode($value);
 
         switch (strtolower($type)) {
+            case 'decimal':
             case 'number':
+            case 'int':
                 // Verifica se é intervalo
                 if (preg_match('/^([0-9.]+)-([0-9.]+)$/', $value, $m)) {
                     $this->criteria .= "$field BETWEEN $m[1] AND $m[2] AND ";
@@ -288,7 +296,7 @@ class Filter
                 }
 
                 // Verifica se tem algum modificador
-                if (preg_match('/^([><=!]{1,2})?([0-9]+)$/', $value, $m)) {
+                if (preg_match('/^([><=!]{1,2})?([0-9.]+)$/', $value, $m)) {
                     switch ($m[1]) {
                         case '>':
                             $method = 'andGreaterThan';
@@ -316,9 +324,9 @@ class Filter
                 }
 
                 // Verifica se é lista
-                if (preg_match('/^[0-9.,\s]+$/', $value, $m)) {
-                    $this->andIn($field, explode(',', $m[0]));
-                }
+                // if (preg_match('/^[0-9.,\s]+$/', $value, $m)) {
+                //     $this->andIn($field, explode(',', $m[0]));
+                // }
 
                 break;
             case 'string':
@@ -375,24 +383,99 @@ class Filter
     }
     public function renderSql ($command = 'SELECT')
     {
+        // \MonitoLib\Dev::pre($this->model);
+
+        if (!$this->reseted && is_null($this->criteria)) {
+
+            // \MonitoLib\Dev::e("renderSql\n");
+
+
+            $request = \MonitoLib\Request::getInstance();
+            $queryString = array_change_key_case($request->getQueryString());
+
+            // \MonitoLib\Dev::pr($queryString);
+            $selectedFields = [];
+
+            foreach ($queryString as $key => $value) {
+                $fields = array_change_key_case($this->model->getFields());
+
+                // \MonitoLib\Dev::pre($fields);
+
+                switch (strtolower($key)) {
+                    case 'orderby':
+                        foreach ($value as $v) {
+                            $parts = explode(',', $v);
+
+                            if (isset($sort[strtolower($parts[0])])) {
+                                $this->orderBy($sort[strtolower($parts[0])], isset($parts[1]) ? $parts[1] : 'ASC');
+                            }
+                        }
+                        break;
+                    case 'query':
+                        foreach ($value as $v) {
+                            $k = key($v);
+                            $f = strtolower($k);
+                            $v = $v[$k];
+
+                            switch ($f) {
+                                case 'fields':
+                                    if ($v === '') {
+                                        throw new \MonitoLib\Exception\BadRequest('É preciso informar pelo menos um campo!');
+                                    }
+
+                                    $this->selectedFields = explode(',', $v);
+                                    break;
+                                case 'page':
+                                    $this->page = $v;
+                                    break;
+                                case 'perpage':
+                                    $this->perPage = $v;
+                                    break;
+                                default:
+                                    $field = isset($fields[$f]) ? $fields[$f] : null;
+
+                                    if (is_null($field)) {
+                                        throw new \MonitoLib\Exception\BadRequest("Campo $k inexistente no modelo!");
+                                    }
+
+                                    $fieldName = isset($field['name']) ? $field['name'] : $k;
+
+                                    // \MonitoLib\Dev::pr($fieldName);
+
+                                    $this->andFilter($fieldName, $v, $field['type']);
+                                    break;
+                            }
+                        }
+                        break;
+                }
+            }
+        }
+
+        // \MonitoLib\Dev::vd($this->sql);
+
         if (is_null($this->sql)) {
             switch ($command) {
                 case 'SELECT':
                     $sql = $command;
 
-                    if ($this->dbms === 1) {
-                        $sql .= ' `' . implode('`,`', $this->fields) . '`';
-                    } else {
-                        $sql .= ' ' . implode(',', $this->fields);
-                    }
+                    // if ($this->dbms === 1) {
+                    //     $sql .= ' `' . implode('`,`', $this->fields) . '`';
+                    // } else {
+                    //     $sql .= ' ' . implode(',', $this->fields);
+                    // }
+
+                    // \MonitoLib\Dev::pre($this->model);
+                    $this->selectedFields = $this->model->getFieldsSerialized($this->selectedFields);
+                    $sql .= $this->selectedFields;
                     $this->complete = true;
                     break;
                 case 'COUNT':
+                    // \MonitoLib\Dev::e('counnnnnn');
                     // TODO: mudar completamente essa bizarrice
                     if (is_null($this->sqlCount)) {
-                        $sql = 'SELECT COUNT(*) AS count';
+                        $sql = 'SELECT COUNT(*) AS count';// FROM ' . $this->tableName . $this->getCountCriteria();
                     } else {
-                        $sql = $this->sqlCount;
+                        $sql = $this->sqlCount;// . $this->getCountCriteria();
                     }
                     break;
                 default:
@@ -404,25 +487,29 @@ class Filter
                 $sql .= ' FROM ' . $this->tableName;
             }
 
+            $sql .= $this->getCountCriteria();
+
         } else {
             $sql = $this->sql;
         }
 
-        if (!is_null($this->criteria)) {
-            $sql .= ' WHERE ' . $this->criteria;//substr($this->criteria, 0, -4);
+        // \MonitoLib\Dev::pr($this);
 
-            if (preg_match('/\s(AND|OR)\s\)?$/', $sql, $m)) {
-                $matched = $m[0];
-                $length = strlen($matched);
-                $sql = substr($sql, 0, -$length);
+        // if (!is_null($this->criteria)) {
+        //     $sql .= ' WHERE ' . $this->criteria;//substr($this->criteria, 0, -4);
 
-                if (substr($matched, -1, 1) == ')') {
-                    $sql .= ')';
-                }
+        //     if (preg_match('/\s(AND|OR)\s\)?$/', $sql, $m)) {
+        //         $matched = $m[0];
+        //         $length = strlen($matched);
+        //         $sql = substr($sql, 0, -$length);
 
-                // \MonitoLib\Dev::pre($m);
-            }
-        }
+        //         if (substr($matched, -1, 1) == ')') {
+        //             $sql .= ')';
+        //         }
+
+        //         // \MonitoLib\Dev::pre($m);
+        //     }
+        // }
         if (count($this->sort) > 0) {
             $sql .=  ' ORDER BY ';
 
@@ -433,11 +520,13 @@ class Filter
             $sql = substr($sql, 0, -2);
         }
 
-        if ($this->perPage > 0) {
-            if ($this->dbms == 1) {
-                $sql .= ' LIMIT ' . (($this->page - 1) * $this->perPage) . ',' . $this->perPage;
-            }
-        }
+        // if ($this->perPage > 0) {
+        //     if ($this->dbms == 1) {
+        //         $sql .= ' LIMIT ' . (($this->page - 1) * $this->perPage) . ',' . $this->perPage;
+        //     }
+        // }
+
+        // \MonitoLib\Dev::e($sql);
 
         return $sql;
     }
@@ -453,6 +542,8 @@ class Filter
         $this->sort          = [];
         $this->sql           = null;
         $this->complete      = false;
+        $this->reseted       = true;
+        return $this;
     }
     public function renderCountAllSql ()
     {
@@ -478,14 +569,19 @@ class Filter
     }
     public function renderCountSql ()
     {
+        return $this->renderSql('COUNT');
         if (is_null($sql = $this->sqlCount)) {
             $sql = 'SELECT COUNT(*) FROM ' . $this->tableName;
         }
+
+        // \MonitoLib\Dev::pre($this);
 
         return $sql . $this->getCountCriteria();
     }
     public function getCountCriteria ()
     {
+        // \MonitoLib\Dev::e("not coming here??????\n");
+        // \MonitoLib\Dev::vde($this->criteria);
         $sql = '';
 
         if (!is_null($this->criteria)) {
@@ -566,6 +662,10 @@ class Filter
     {
         return $this->name;
     }
+    public function getSelectedFields ()
+    {
+        return $this->selectedFields;
+    }
     public function setSql ($sql)
     {
         $this->sql = $sql;
@@ -578,6 +678,10 @@ class Filter
     }
     public function setFields ($fields) {
         $this->fields = $fields;
+        return $this;
+    }
+    public function setModel ($model) {
+        $this->model = $model;
         return $this;
     }
     public function setTableName ($tableName) {

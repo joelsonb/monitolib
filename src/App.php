@@ -97,7 +97,7 @@ class App
     public static function setDebug ($debug)
     {
         if (!is_integer($debug) || $debug < 0 || $debug > 2) {
-            throw new \Exception("Wrong debug level: value must be 0, 1 or 2!");
+            throw new \MonitoLib\Exception\InternalError('Wrong debug level: value must be 0, 1 or 2!');
         }
 
         self::$debug = $debug;

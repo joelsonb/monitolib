@@ -3,7 +3,7 @@ namespace MonitoLib\Database\Dao;
 
 use \MonitoLib\Functions;
 
-class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Database\Dao
+class Oracle extends \MonitoLib\Database\Dao\Query implements \MonitoLib\Database\Dao
 {
     protected $dto;
     protected $dtoName;
@@ -28,13 +28,14 @@ class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databa
         $model = str_replace('dao\\','model\\', get_class($this));
 
         if (class_exists($this->dtoName)) {
-            $this->dto   = new $this->dtoName;
+            $this->dto = new $this->dtoName;
         }
         if (class_exists($model)) {
             $this->model = new $model;
 
             $this->setFields($this->model->getFields());
             $this->setTableName($this->model->getTableName());
+            $this->setModel($this->model);
         }
 
         $class = get_class($this);
@@ -72,6 +73,12 @@ class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databa
         $sqlCount = $this->renderCountSql();
         $sqlData  = $this->renderSql();
 
+        // \MonitoLib\Dev::e($sqlTotal);
+        // \MonitoLib\Dev::e("\n");
+        // \MonitoLib\Dev::e($sqlCount);
+        // \MonitoLib\Dev::e("\n");
+        // \MonitoLib\Dev::ee($sqlData);
+
         $stt = oci_parse($this->conn, $sqlTotal);
         $exe = $this->connection->execute($stt);
 
@@ -99,24 +106,27 @@ class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databa
             $count = $res[0];
 
             if ($count > 0) {
-                $startRow = (($this->getPage() - 1) * $this->getPerPage()) + 1;
-                $endRow   = $this->getPerPage() * $this->getPage();
+                if ($this->getPerPage() > 0) {
+                    $startRow = (($this->getPage() - 1) * $this->getPerPage()) + 1;
+                    $endRow   = $this->getPerPage() * $this->getPage();
+                    $sqlData = "SELECT {$this->getSelectedFields()} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sqlData) a) WHERE rown_ BETWEEN $startRow AND $endRow";
+                }
 
-                $sql = "SELECT * FROM (SELECT a.*, ROWNUM as rown FROM ($sqlData) a) WHERE rown BETWEEN $startRow AND $endRow";
-                $data = $this->setSql($sql)->list();
+                // Reset $sql
+                $this->reset();
 
+                // \MonitoLib\Dev::pr($this);
+
+                $data = $this->setSql($sqlData)->list();
             }
         }
 
-        // Reset $sql
-        $this->reset();
-
         return [
-            'count' => $count,
+            'count' => +$count,
             'data'  => $data,
-            'total' => $total,
-            'page'  => $this->getPerPage(),
-            'pages' => ceil($count / $this->getPerPage())
+            'page'  => +$this->getPage(),
+            'pages' => +ceil($count / $this->getPerPage()),
+            'total' => +$total,
         ];
     }
     public function delete (...$params)
@@ -129,7 +139,7 @@ class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databa
             $keys = $this->model->getPrimaryKeys();
 
             if (count($params) !== count($keys)) {
-                throw new \Exception("Invalid parameters number!", 1);
+                throw new \MonitoLib\Exception\BadRequest('Invalid parameters number!');
             }
 
             if (count($params) > 1) {
@@ -170,7 +180,7 @@ class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databa
         $dto = NULL;
 
         if ($res = oci_fetch_array($stt, OCI_ASSOC | OCI_RETURN_NULLS)) {
-            if (!is_null($this->model) && array_keys($res) === array_map('strtoupper', $this->model->getFields())) {
+            if (!is_null($this->model) && array_keys($res) === array_map('strtoupper', $this->model->listFieldsNames())) {
                 $dto = new $this->dtoName;
             } else {
                 $dto = \MonitoLib\Database\Dto::get($res);
@@ -191,7 +201,7 @@ class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databa
             $keys = $this->model->getPrimaryKeys();
 
             if (count($params) !== count($keys)) {
-                throw new \Exception("Invalid parameters number!", 1);
+                throw new \MonitoLib\Exception\BadRequest('Invalid parameters number!');
             }
 
             if (count($params) > 1) {
@@ -258,6 +268,9 @@ class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databa
     public function list ()
     {
         $sql = $this->renderSql();
+
+        // \MonitoLib\Dev::ee($sql);
+
         $stt = oci_parse($this->conn, $sql);
         $exe = $this->connection->execute($stt);
 
@@ -268,15 +281,32 @@ class Oracle extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databa
 
         $data = [];
 
+        $dto = null;
+        $fields = array_change_key_case($this->model->getFields());
+
         while ($res = oci_fetch_array($stt, OCI_ASSOC | OCI_RETURN_NULLS)) {
-            if (!is_null($this->model) && array_keys($res) === array_map('strtoupper', $this->model->getFields())) {
+            if (is_null($dto) && !is_null($this->model) && array_keys($res) === array_map('strtoupper', $this->model->listFieldsNames())) {
                 $dto = new $this->dtoName;
             } else {
                 $dto = \MonitoLib\Database\Dto::get($res);
             }
 
             foreach ($res as $f => $v) {
-                $set = 'set' . Functions::toUpperCamelCase($f);
+                $field = $fields[strtolower($f)];
+                $set   = 'set' . Functions::toUpperCamelCase($f);
+
+                // \MonitoLib\Dev::pr($field);
+
+                switch ($field['type']) {
+                    case 'date':
+                        $v = date('Y-m-d', strtotime($v));
+                        break;
+                    case 'int':
+                        $v = +$v;
+                        break;
+                }
+
+
                 $dto->$set($v);
             }
 

@@ -1,8 +1,24 @@
 <?php
 namespace MonitoLib\Database\Model;
 
-class Oracle
+class Oracle extends \MonitoLib\Database\Model\Model
 {
+	protected $defaults = [
+		'auto'             => false,
+		'charset'          => 'utf8',
+		'collation'        => 'utf8_general_ci',
+		'defaultValue'     => null,
+		'label'            => '',
+		'maxValue'         => 0,
+		'minValue'         => 0,
+		'numericPrecision' => null,
+		'numericScale'     => null,
+		'primary'          => false,
+		'required'         => false,
+		'type'             => 'varchar',
+		'unique'           => false,
+		'unsigned'         => false,
+	];
 	protected $joins;
 
 	public function addValidation ($field)
@@ -13,14 +29,23 @@ class Oracle
 	}
 	public function getFields ()
 	{
-		if (isset($this->fields[0])) {
-			//\jLib\Dev::pre($this->fields);
-			return $this->fields;
-		} else {
-			return array_keys($this->fields);
-		}
+		return $this->fields;
 	}
 	public function getFieldsList ()
+	{
+		$list = [];
+
+		foreach ($this->fields as $key => $value) {
+			if (isset($value['name'])) {
+				$list[] = $value['name'];
+			} else {
+				$list[] = $key;
+			}
+		}
+
+		return $list;
+	}
+	public function OLDgetFieldsList ()
 	{
 		return $this->fields;
 	}
@@ -69,6 +94,59 @@ class Oracle
 	public function getPrimaryKeys ()
 	{
 		return $this->keys;
+	}
+
+	// Retorna string com campos da tabela separados por vírgula
+	public function getFieldsSerialized ($fields = null)
+	{
+		$list = ' ';
+
+		if (is_null($fields) || count($fields) === 0) {
+			$fields = $this->getFieldsList();
+		}
+
+		foreach ($fields as $f) {
+			if (isset($this->fields[$f])) {
+				if (isset($this->fields['name'])) {
+					$list .= $this->fields['name'];
+				} else {
+					$list .= $f;
+				}
+
+				$list .= ',';
+			} else {
+				throw new \MonitoLib\Exception\BadRequest("O campo $f não existe na tabela {$this->getTableName()}!");
+			}
+		}
+
+		return substr($list, 0, -1);
+	}
+
+	// select
+	public function getSelectFields ($fields = null)
+	{
+		$list = ' ';
+
+		// \MonitoLib\Dev::vd($fields);
+
+		// $fields = is_null($fields) ? $this->fields : $fields;
+
+		foreach ($this->fields as $key => $value) {
+			// TODO: lançar exceção se o campo não existir
+			if (is_null($fields) || (is_array($fields) && (count($fields) === 0 || in_array($key, $fields)))) {
+
+				if (isset($value['name'])) {
+					$list .= $value['name'];
+				} else {
+					$list .= $key;
+				}
+
+				$list .= ',';
+			}
+
+		}
+
+		return substr($list, 0, -1);
 	}
 	public function getTableName ()
 	{

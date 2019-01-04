@@ -30,7 +30,8 @@ class Oracle
 
 	private function __construct ($parameters)
 	{
-		$this->conn = @oci_connect($parameters->user, $parameters->password, $parameters->server);
+		// \MonitoLib\Dev::ee('came here');
+		$this->conn = oci_connect($parameters->user, $parameters->password, $parameters->server);
 
 		if (!$this->conn) {
 			$m = oci_error();

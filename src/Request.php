@@ -94,9 +94,9 @@ class Request
                 $this->queryString['orderBy'][] = $v;
             } else {
                 if (substr($f, -2) == '[]') {
-                    $this->queryString[substr($f, 0, -2)][] = $v;
+                    $this->queryString['query'][][substr($f, 0, -2)][] = $v;
                 } else {
-                    $this->queryString[$f] = $v;
+                    $this->queryString['query'][][$f] = $v;
                 }
             }
         }

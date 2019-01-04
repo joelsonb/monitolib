@@ -3,7 +3,7 @@ namespace MonitoLib\Database\Dao;
 
 use \MonitoLib\Functions;
 
-class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Database\Dao
+class MySQL extends \MonitoLib\Database\Dao\Query implements \MonitoLib\Database\Dao
 {
     protected $dto;
     protected $dtoName;
@@ -31,13 +31,13 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
 
             $this->setFields($this->model->getFields());
             $this->setTableName($this->model->getTableName());
+            $this->setModel($this->model);
         }
 
         $class = get_class($this);
 
         $this->namespace .= str_replace('dao\\', '', substr($class, 0, strrpos($class, '\\')));
     }
-    // TODO: to implement
     /**
     * count
     */
@@ -95,35 +95,39 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
     */
     public function delete (...$params)
     {
-        if ($this->model->getTableType() == 'view') {
-            throw new \Exception('A view object is readonly!');
-        }
-
-        if (count($params) > 0) {
-            $keys = $this->model->getPrimaryKeys();
-
-            if (count($params) !== count($keys)) {
-                throw new \Exception("Invalid parameters number!", 1);
+        try {
+            if ($this->model->getTableType() == 'view') {
+                throw new \MonitoLib\Exception\BadRequest('Não é possível deletar registros de uma view!');
             }
 
-            if (count($params) > 1) {
-                foreach ($params as $p) {
-                    foreach ($keys as $k) {
-                        $this->andEqual($k, $p);
-                    }
+            if (count($params) > 0) {
+                $keys = $this->model->getPrimaryKeys();
+
+                if (count($params) !== count($keys)) {
+                    throw new \MonitoLib\Exception\BadRequest('Parâmetros inválidos!');
                 }
-            } else {
-                $this->andEqual($keys[0], $params[0]);
+
+                if (count($params) > 1) {
+                    foreach ($params as $p) {
+                        foreach ($keys as $k) {
+                            $this->andEqual($k, $p);
+                        }
+                    }
+                } else {
+                    $this->andEqual($keys[0], $params[0]);
+                }
             }
+
+            $stt = $this->conn->prepare($this->renderSql('DELETE'));
+            $stt->execute();
+
+            // Reset filter
+            $this->reset();
+
+            return $stt->rowCount();
+        } catch (\PDOException $e) {
+            throw new \MonitoLib\Exception\InternalError("Ocorreu um erro no banco de dados: {$e->getCode()}!", [$e->getMessage()]);
         }
-
-        $stt = $this->conn->prepare($this->renderSql('DELETE'));
-        $stt->execute();
-
-        // Reset filter
-        $this->reset();
-
-        return $stt->rowCount();
     }
     /**
     * get
@@ -137,7 +141,14 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
         $dto = NULL;
 
         if ($res = $stt->fetch(\PDO::FETCH_ASSOC)) {
-            if (!is_null($this->model) && array_keys($res) === $this->model->getFields()) {
+        // \MonitoLib\Dev::pr(array_keys($res));
+        // \MonitoLib\Dev::pr($this->model->listFieldsNames());
+
+
+
+        // \MonitoLib\Dev::vd($kdl);
+
+            if (!is_null($this->model) && (count(array_diff(array_keys($res), $this->model->listFieldsNames())) === 0)) {
                 $dto = new $this->dtoName;
             } else {
                 $dto = \MonitoLib\Database\Dto::get($res);
@@ -199,11 +210,11 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
     {
         try {
             if ($this->model->getTableType() == 'view') {
-                throw new \Exception('Não é possível inserir registros em uma view!');
+                throw new \MonitoLib\Exception\BadRequest('Não é possível inserir registros em uma view!');
             }
 
             if (!$dto instanceof $this->dtoName) {
-                throw new \Exception('O parâmetro passado não é uma instância de ' . $this->dtoName . '!');
+                throw new \MonitoLib\Exception\BadRequest('O parâmetro passado não é uma instância de ' . $this->dtoName . '!');
             }
 
             if (method_exists($dto, 'setInsTime') && is_null($dto->getInsTime())) {
@@ -236,7 +247,8 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
                 return $dto;
             }
         } catch (\PDOException $e) {
-            \MonitoLib\Dev::pre($e);
+            // \MonitoLib\Dev::pre($e);
+            throw new \MonitoLib\Exception\InternalError("Ocorreu um erro no banco de dados: {$e->getCode()}!", [$e->getMessage()]);
         }
     }
     /**
@@ -251,7 +263,7 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
         $data = [];
 
         while ($res = $stt->fetch(\PDO::FETCH_ASSOC)) {
-            if (!is_null($this->model) && array_keys($res) === $this->model->getFields()) {
+            if (!is_null($this->model) && array_keys($res) === $this->model->listFieldsNames()) {
                 $dto = new $this->dtoName;
             } else {
                 $dto = \MonitoLib\Database\Dto::get($res);
@@ -304,12 +316,12 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
             $aKeys  = array();
             $aFields = array();
 
-            foreach ($this->model->getFields() as $f) {
+            foreach ($this->model->getFieldsList() as $f) {
                 if (in_array($f, $this->model->getPrimaryKeys())) {
                     $aKeys[] = $f;
-                    $key    .= "$f = ? AND ";
+                    $key     .= "$f = ? AND ";
                 } else {
-                    $update .= "`$f` = ?,";
+                    $update    .= "`$f` = ?,";
                     $aFields[] = $f;
                 }
             }
@@ -340,7 +352,8 @@ class MySQL extends \MonitoLib\Database\Dao\Filter implements \MonitoLib\Databas
 
             return $updated;
         } catch (\PDOException $e) {
-            \MonitoLib\Dev::pre($e);
+            // \MonitoLib\Dev::pre($e);
+            throw new \MonitoLib\Exception\InternalError("Ocorreu um erro no banco de dados: {$e->getCode()}!", [$e->getMessage()]);
         }
     }
 }

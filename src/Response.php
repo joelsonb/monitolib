@@ -34,7 +34,7 @@ class Response
 		http_response_code($this->httpResponseCode);
 
 		if (count($this->json) > 0) {
-			return json_encode($this->json);
+			return json_encode($this->json, JSON_UNESCAPED_UNICODE);
 		}
 	}
 	public function setData ($data)
