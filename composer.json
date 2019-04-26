@@ -1,6 +1,5 @@
 {
     "name": "joelsonb/monitolib",
-    "minimum-stability": "dev",
     "description": "Monitocli - just a personal project",
     "homepage": "http://gitlab.com/joelsonb/monitolib",
     "authors": [
@@ -9,13 +8,12 @@
             "email": "joelsonb@msn.com"
         }
     ],
-    "license": "BSD-3-Clause",
     "require": {
-        "php": ">=5.4.0"
+        "php": ">=7.0.0"
     },
-    "require-dev": {
-        "php": ">=5.4.0",
-        "joelson/monitocli": "dev-master"
+    "scripts": {
+        "post-install-cmd": "MonitoLib\\Install::postComposer",
+        "post-update-cmd": "MonitoLib\\Install::postComposer"
     },
     "autoload": {
         "psr-4": {

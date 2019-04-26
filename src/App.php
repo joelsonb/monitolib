@@ -1,16 +1,24 @@
 <?php
 namespace MonitoLib;
 
+use \MonitoLib\Exception\InternalError;
+use \MonitoLib\Functions;
+
 class App
 {
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
+
     static private $debug = 0;
     static private $instance;
-    static private $isWindows;
     static private $cachePath;
     static private $configPath;
+    static private $hasPrivileges = false;
+    static private $isLoggedIn = false;
     static private $logPath;
-    static private $rootPath;
-    static private $rootUrl;
     static private $storagePath;
     static private $tmpPath;
 
@@ -31,14 +39,14 @@ class App
     }
     private static function getPath ($directory, $relativePath = null)
     {
-        $directoryPath = $directory . 'Path'; 
+        $directoryPath = $directory . 'Path';
 
         if (is_null(self::$$directoryPath)) {
-            $path = self::$rootPath . $directory . DIRECTORY_SEPARATOR;
+            $path = MONITOLIB_ROOT_PATH . $directory . DIRECTORY_SEPARATOR;
 
             if (!file_exists($path)) {
                 if (!mkdir($path, 0755, true)) {
-                    throw new \Exception("Error creating directory $path", 1);
+                    throw new InternalError("Erro ao criar o diretório $path");
                 }
             }
 
@@ -50,7 +58,7 @@ class App
 
             if (!file_exists($relativePath)) {
                 if (!mkdir($relativePath, 0755, true)) {
-                    throw new \Exception("Error creating directory $relativePath", 1);
+                    throw new InternalError("Erro ao criar o diretório $relativePath");
                 }
             }
 
@@ -75,43 +83,120 @@ class App
     {
         return self::getPath('storage', $relativePath);
     }
-    public static function getRootPath ()
-    {
-        return self::$rootPath;
-    }
-    public static function getRootUrl ()
-    {
-        return self::$rootUrl;
-    }
     public static function getTmpPath ($relativePath = null)
     {
         return self::getPath('tmp', $relativePath);
     }
-    public static function isWindows ()
+    public static function now ()
     {
-        return self::$isWindows;
-    }
-    public static function now () {
         return date('Y-m-d H:i:s');
+    }
+    public static function run ()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') {
+            http_response_code(500);
+        }
+
+        try {
+            // Busca os arquivos de rota
+            foreach (glob(self::getConfigPath() . '*routes.php') as $filename) {
+                require_once $filename;
+            }
+
+            $uri = $_SERVER['REQUEST_URI'];
+
+            // Removes site from url
+            if (substr($uri, 0, strlen(MONITOLIB_ROOT_URL)) == MONITOLIB_ROOT_URL) {
+                $uri = substr($uri, strlen(MONITOLIB_ROOT_URL));
+            }
+
+            // Splits query string from url
+            $uri = explode('?', $uri);
+
+            $request = \MonitoLib\Request::getInstance();
+            $request->setRequestUri($uri[0]);
+
+            if (isset($uri[1])) {
+                $request->setQueryString($uri[1]);
+            }
+
+            // Requires an app init file, if exists
+            require self::getConfigPath() . 'init.php';
+
+            $return = [];
+
+            if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') {
+                $router = \MonitoLib\Router::check($request);
+
+                if ($router->isSecure) {
+                    if (!self::$isLoggedIn) {
+                        http_response_code(401);
+                        throw new \Exception('Usuário não logado!', 401);
+                    }
+
+                    if (!self::$hasPrivileges) {
+                        http_response_code(403);
+                        throw new \Exception('Usuário sem permissão para acessar o recurso!', 403);
+                    }
+                }
+
+                $class    = $router->class;
+                $method   = $router->method;
+                $class    = new $class;
+                $return   = $class->$method(...$router->params);
+                $response = \MonitoLib\Response::getInstance();
+            }
+        } catch (\MonitoLib\Exception\DatabaseError $e) {
+            $return['error'] = $e->getMessage();
+            if (self::getDebug() > 1) {
+                if (!empty($e->getErrors())) {
+                    $return['debug']['errors'] = $e->getErrors();
+                }
+            }
+        } catch (\ThrowAble $e) {
+            $return['error'] = $e->getMessage();
+            if (method_exists($e, 'getErrors') && !empty($e->getErrors())) {
+                $return['errors'] = $e->getErrors();
+            }
+        } finally {
+            header('Content-Type: application/json');
+
+            if (empty($return['error'])) {
+                $buffer = $response->__toString();
+                if ($buffer === '') {
+                    http_response_code(204);
+                } else {
+                    echo $buffer;
+                }
+            } else {
+                if (self::getDebug() > 0) {
+                    $return['debug']['method'] = $_SERVER['REQUEST_METHOD'];
+                    $return['debug']['url']    = $request->getRequestUri();
+                }
+
+                if (self::getDebug() > 1) {
+                    $return['debug']['file'] = $e->getFile();
+                    $return['debug']['line'] = $e->getLine();
+                }
+
+                echo json_encode($return, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+    }
+    public static function setHasPrivileges ($hasPrivileges)
+    {
+        self::$hasPrivileges = $hasPrivileges;
+    }
+    public static function setIsLoggedIn ($isLoggedIn)
+    {
+        self::$setIsLoggedIn = $isLoggedIn;
     }
     public static function setDebug ($debug)
     {
         if (!is_integer($debug) || $debug < 0 || $debug > 2) {
-            throw new \MonitoLib\Exception\InternalError('Wrong debug level: value must be 0, 1 or 2!');
+            throw new InternalError('O nível de debug deve ser 0, 1 ou 2!');
         }
 
         self::$debug = $debug;
-    }
-    public static function setRootPath ($rootPath)
-    {
-        if (is_null(self::$rootPath)) {
-            self::$rootPath = $rootPath;
-        }
-    }
-    public static function setRootUrl ($rootUrl)
-    {
-        if (is_null(self::$rootUrl)) {
-            self::$rootUrl = $rootUrl;
-        }
     }
 }

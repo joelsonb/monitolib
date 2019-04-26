@@ -8,7 +8,7 @@
  */
 namespace MonitoLib\Exception;
 
-class NotFound extends \Exception
+class DatabaseError extends \Exception
 {
     const VERSION = '1.0.0';
     /**
@@ -21,7 +21,7 @@ class NotFound extends \Exception
     public function __construct ($message = null, $errors = null, $code = 0, \Exception $previous = null)
     {
         $this->errors = $errors;
-        http_response_code(404);
+        http_response_code(400);
         parent::__construct($message, $code, $previous);
     }
 

@@ -9,6 +9,12 @@ use \MonitoLib\Functions;
 
 class Response
 {
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
+
 	static private $instance;
 
 	private $json = [];
@@ -33,17 +39,24 @@ class Response
 	{
 		http_response_code($this->httpResponseCode);
 
-		if (count($this->json) > 0) {
+		if (!empty($this->json)) {
 			return json_encode($this->json, JSON_UNESCAPED_UNICODE);
 		}
 	}
 	public function setData ($data)
 	{
+		if (is_object($data)) {
+			if (!$data instanceof \stdClass) {
+				$data = $this->toArray($data);
+			}
+		}
+
 		$this->json['data'] = $data;
 		return $this;
 	}
 	public function setDataset ($dataset)
 	{
+		$dataset['data'] = $this->toArray($dataset['data']);
 		$this->json = Functions::arrayMergeRecursive($this->json, $dataset);
 		return $this;
 	}
@@ -66,5 +79,48 @@ class Response
 	{
 		$this->json[$property] = is_null($value) ? '' : $value;
 		return $this;
+	}
+	public function toArray ($objectList)
+	{
+		if (is_null($objectList)) {
+			return [];
+		}
+
+		$objectListOk = [];
+
+		if (is_array($objectList)) {
+			$objectListOk = $objectList;
+		} else {
+			$objectListOk[] = $objectList;
+		}
+
+		$results = [];
+
+		foreach ($objectListOk as $object) {
+			$result = [];
+		    $class = new \ReflectionClass(get_class($object));
+		    
+		    foreach ($class->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+		        $methodName = $method->name;
+
+		        if (strpos($methodName, 'get') === 0 && strlen($methodName) > 3) {
+		            $propertyName = lcfirst(substr($methodName, 3));
+		            $value = $method->invoke($object);
+
+		            if (is_object($value)) {
+	                    $result[$propertyName] = $this->toArray($value);
+		            } else {
+		                $result[$propertyName] = $value ?? '';
+		            }
+		        }
+		    }
+
+		    $results[] = $result;
+		}
+		if (is_array($objectList)) {
+	    	return $results;
+		} else {
+			return $results[0];
+		}
 	}
 }

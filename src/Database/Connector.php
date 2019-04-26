@@ -2,7 +2,6 @@
 /**
  * Database connector
  * @author Joelson B <joelsonb@msn.com>
- * @since 2013-12-10
  * @copyright Copyright &copy; 2013 - 2018
  *  
  * @package MonitoLib
@@ -10,14 +9,18 @@
 namespace MonitoLib\Database;
 
 use \MonitoLib\App;
+use \MonitoLib\Exception\InternalError;
 
 class Connector
 {
-	const VERSION = '1.0.0';
-
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
 	private static $instance;
 
-	private $connection;
+	private $connectionName;
 	private $connections = [];
 	private $dbms;
 
@@ -25,25 +28,23 @@ class Connector
 	{
 		$file = App::getConfigPath() . 'database.json';
 
-		// TODO: validar arquivos
 		if (!is_readable($file)) {
-			throw new \Exception("File $file not found or permition error!");
+			throw new InternalError("Arquivo $file não encontrado ou usuário sem permissão!");
 		}
 
 		$db = json_decode(file_get_contents($file));
 		
 		if (is_null($db)) {
-			throw new \Exception("File $file can not be parsed!");
+			throw new InternalError("O arquivo $file é inválido!");
 		}
 		
 		$this->connections = new \stdClass;
 
-		if (count((array)$db) > 0) {
+		if (!empty($db)) {
 			foreach ($db as $dk => $dv) {
-				//self::$connections->$dk->$dv;
-				$this->connections->$dk = $dv;
-				$this->connections->$dk->name = $dk;
-				$this->connections->$dk->instance = NULL;
+				$this->connections->$dk           = $dv;
+				$this->connections->$dk->name     = $dk;
+				$this->connections->$dk->instance = null;
 			}
 		}
 	}
@@ -60,77 +61,40 @@ class Connector
 
 		return self::$instance;
 	}
-	public static function closeConnection ($conn = NULL)
+	public function getConnection ($connectionName = null)
 	{
-		if (is_null($conn)) {
-			foreach (self::$connections as $c) {
-				_vd($c);
-				$c->instance->close();
+		if (empty($this->connections)) {
+			throw new InternalError('Não existem conexões configuradas!');
+		}
+
+		if (is_null($this->connectionName) && is_null($connectionName)) {
+			throw new InternalError('Não existe uma conexão padrão e nenhuma conexão foi informada!');
+		}
+
+		if (is_null($connectionName)) {
+			$connectionName = $this->connectionName;
+		}
+
+		if (!isset($this->connections->$connectionName)) {
+			throw new InternalError("A conexão $connectionName não existe!");
+		}
+
+		if (is_null($this->connections->$connectionName->instance)) {
+			switch ($this->connections->$connectionName->dbms) {
+				case 'MySQL':
+					return \MonitoLib\Database\Connector\MySQL::connect($this->connections->$connectionName);
+				case 'Oracle':
+					return \MonitoLib\Database\Connector\Oracle::connect($this->connections->$connectionName);
+				default:
+					throw new InternalError('Driver de conexão inválido!');
 			}
 
-			self::$connections = NULL;
-		} else {
-			if (key_exists($conn, self::$connections)) {
-				self::$connections->$conn->instance = NULL;
-				//unset(self::$connections->$conn);
-			}
-		}
-	}
-	public function getConfig ($conn = NULL)
-	{
-		if (count((array)$this->connections) == 0) {
-			throw new \Exception('There is no connections!');
+			$this->dbms = $this->connections->$connectionName->dbms;
+
+			$this->connections->$connectionName->instance = $obj;
 		}
 
-		if (is_null($this->connection) and is_null($conn)) {
-			throw new \Exception('There is no default connection!');
-		}
-
-		if (is_null($conn)) {
-			$conn = $this->connection;
-		}
-
-		if (!isset($this->connections->$conn)) {
-			throw new \Exception("Connection $conn is not configured!");
-		}
-
-		return $this->connections->$conn;
-	}
-	public function getConnection ($conn = null)
-	{
-		if (count((array)$this->connections) === 0) {
-			throw new \Exception('There is no connections!');
-		}
-
-		if (is_null($this->connection) and is_null($conn)) {
-			throw new \Exception('There is no default connection!');
-		}
-
-		if (is_null($conn)) {
-			$conn = $this->connection;
-		}
-
-		if (!isset($this->connections->$conn)) {
-			throw new \Exception("Connection $conn is not configured!");
-		}
-
-		if (is_null($this->connections->$conn->instance)) {
-			switch ($this->connections->$conn->dbms) {
-				case 'mysql':
-					$obj = new \mysqli($this->connections->$conn->server, $this->connections->$conn->user, $this->connections->$conn->password, $this->connections->$conn->database);
-					break;
-				case 'mysql-pdo':
-					return \MonitoLib\Database\Connector\MySQL::connect($this->connections->$conn);
-				case 'oracle':
-					return \MonitoLib\Database\Connector\Oracle::connect($this->connections->$conn);
-			}
-
-			$this->dbms = $this->connections->$conn->dbms;
-
-			$this->connections->$conn->instance = $obj;
-		}
-
-		return $this->connections->$conn->instance;
+		return $this->connections->$connectionName->instance;
 	}
 	/**
 	 * getConnectionsList
@@ -146,16 +110,16 @@ class Connector
 		return $this->dbms;
 	}
 	/**
-	 * setConnection
+	 * setConnectionName
 	 * 
-	 * @param string $conn Connection name
+	 * @param string $connectionName Connection name
 	 */
-	public function setConnection ($conn)
+	public function setConnectionName ($connectionName)
 	{
-		if (!key_exists($conn, $this->connections)) {
-			throw new \Exception("There is no connection \"$conn\"!");
+		if (!isset($this->connections->$connectionName)) {
+			throw new InternalError("A conexão $connectionName não existe!");
 		}
 
-		$this->connection = $conn;
+		$this->connectionName = $connectionName;
 	}
 }

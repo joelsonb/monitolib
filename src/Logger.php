@@ -2,10 +2,15 @@
 namespace MonitoLib;
 
 use \MonitoLib\App;
+use \MonitoLib\Exception\InternalError;
 
 class Logger
 {
-	const VERSION = '1.0.0';
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
 
 	private $breakLine = true;
 	private $echoLog = false;
@@ -19,7 +24,7 @@ class Logger
 		} else {
 			if (file_exists($outputFile)) {
 				if (is_dir($outputFile)) {
-					throw new \Exception("Arquivo de log inválido: $outputFile!", 1);
+					throw new InternalError("Arquivo de log inválido: $outputFile!", 1);
 				} else {
 					$this->outputFile = $outputFile;
 				}
@@ -27,7 +32,7 @@ class Logger
 				if (preg_match('/[a-zA-Z0-9.-_]/', $outputFile)) {
 					$this->outputFile = App::getLogPath() . $outputFile;
 				} else {
-					throw new \Exception("Arquivo de log inválido: $outputFile!", 1);
+					throw new InternalError("Arquivo de log inválido: $outputFile!", 1);
 				}
 			}
 		}
@@ -47,7 +52,7 @@ class Logger
 		}
 		
 		if (!error_log($text, 3, $this->outputFile)) {
-			throw new \Exception('Erro ao gravar log em: ' . $this->outputFile . "!\r\n");
+			throw new InternalError('Erro ao gravar log em: ' . $this->outputFile . "!\r\n");
 		}
 	}
 	public function setOutputFile ($outputFile)

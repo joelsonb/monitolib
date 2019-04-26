@@ -6,10 +6,18 @@
 namespace MonitoLib;
 
 use \MonitoLib\App;
+use \MonitoLib\Exception\InternalError;
+use \MonitoLib\Exception\NotFound;
 use \MonitoLib\Functions;
 
 class Router
 {
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
+
     static private $routes = [];
 
     private static function add ($method, $url, $action, $secure = true)
@@ -22,7 +30,7 @@ class Router
 
         $len = count($parts) - 1;
 
-        for ($i = $len; $i >= 0; $i--) { 
+        for ($i = $len; $i >= 0; $i--) {
             $index = $parts[$i];
 
             if ($i == $len) {
@@ -39,7 +47,7 @@ class Router
             $af = [];
         }
 
-        self::$routes = \MonitoLib\Functions::ArrayMergeRecursive(self::$routes, $cf);
+        self::$routes = Functions::arrayMergeRecursive(self::$routes, $cf);
     }
     public static function cli ($url, $action, $secure = true)
     {
@@ -48,7 +56,7 @@ class Router
     public static function get ($url, $action, $secure = true)
     {
         self::add('GET', $url, $action, $secure);
-    }   
+    }
     public static function patch ($url, $action, $secure = true)
     {
         self::add('PATCH', $url, $action, $secure);
@@ -68,7 +76,7 @@ class Router
     static private function error ($message)
     {
         return $json = [
-            'code'    => '1', 
+            'code'    => '1',
             'message' => $message
             ];
     }
@@ -135,21 +143,14 @@ class Router
             }
             // Se a url foi encontrada
             if ($matched) {
-                // echo "existe $uriPart<br />";
-                // $ri = self::$routes[$uriPart];
-
-                // \MonitoLib\Dev::pr($ri[$xPart]);
-                // \MonitoLib\Dev::e($ri[$xPart]['#'][$requestMethod]);
-
                 $xM = $requestMethod;
 
-                // if (!isset($ri[$xPart]['#'][$requestMethod]) || !isset($ri[$xPart]['#']['*'])) {
                 if (!isset($ri[$xPart]['@'][$requestMethod])) {
                     if (isset($ri[$xPart]['@']['*'])) {
                         $xM = '*';
                     } else {
                         http_response_code(405);
-                        throw new \Exception('Method Not Allowed!', 405);
+                        throw new \Exception('Método HTTP não permitido!', 405);
                     }
                 }
 
@@ -174,20 +175,19 @@ class Router
                             $router->isSecure = $secure;
                             return $router;
                         } else {
-                            throw new \Exception('Controller method not found!', 5);
+                            throw new NotFound('Método do controller não encontrado!');
                         }
                     } else {
-                        throw new \Exception('Controller not found!', 3);
+                        throw new NotFound('Controller não encontrado!');
                     }
                 } else {
-                    throw new \Exception('Action not found!', 6);
+                    throw new NotFound('Ação não encontrada!');
                 }
             } else {
-                http_response_code(404);
-                throw new \Exception('Route not configured in the server!', 404);
+                throw new NotFound('Rota não configurada!');
             }
         } else {
-            throw new \Exception("There's not routes configured in server", 7);
+            throw new InternalError('Não há rotas configuradas!');
         }
     }
 }

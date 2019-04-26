@@ -3,6 +3,12 @@ namespace MonitoLib;
 
 class Functions
 {
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
+
 	/**
 	 * Merges an array recursively
 	 * Mescla um array recursivamente
@@ -19,7 +25,7 @@ class Functions
 			foreach ($a2 as $k => $v) {
 				if (isset($a1[$k])) {
 					if (is_array($a1[$k])) {
-						$newArray[$k] = self::ArrayMergeRecursive($a1[$k], $a2[$k]);
+						$newArray[$k] = self::arrayMergeRecursive($a1[$k], $a2[$k]);
 					} else {
 						$newArray[$k] = $a2[$k];
 					}
@@ -97,15 +103,6 @@ class Functions
 		if (preg_match('/[0-9]{8}/', $int)) {
 			return substr($int, 4, 4) . '-' . substr($int, 2, 2) . '-' . substr($int, 0, 2);
 		}
-	}
-	/**
-	 * jLibisset
-	 *
-	 * @param &$e
-	 */
-	public static function isset(&$variable, $default = '')
-	{
-		return isset($variable) ? $variable : $default;
 	}
 	public static function postValue ($variable, $default = null)
 	{
@@ -223,7 +220,7 @@ class Functions
 	}
 	public static function toLowerCamelCase ($string)
 	{
-		$frag  = explode('_', $string);
+		$frag  = explode('_', strtolower($string));
 		$count = count($frag);
 		$newString = $frag[0];
 		
@@ -285,9 +282,9 @@ class Functions
 	public static function urlToMethod ($url)
 	{
 		$af = explode('-', $url);
-		$ra = NULL;
+		$ra = null;
 
-		if (count($af) > 0) {
+		if (!empty($af)) {
 			$ra = $af[0];
 			array_shift($af);
 

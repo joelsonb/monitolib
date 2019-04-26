@@ -8,38 +8,37 @@
  */
 namespace MonitoLib\Database\Connector;
 
+use \MonitoLib\Exception\DatabaseError;
+use \MonitoLib\Exception\InternalError;
+
 class MySQL
 {
-	const VERSION = '1.0.0';
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
 
 	private $conn;
-
 	private static $instance;
 
-	private $connection;
-	private $connections = [];
-	private $dbms;
+	private function __construct ($parameters)
+	{
+		try {
+			$this->conn = new \PDO('mysql:host=' . $parameters->server 
+				. ';dbname=' . $parameters->database 
+				. ';charset=UTF8', $parameters->user, 
+				$parameters->password);
+			$this->conn->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+		} catch (\PDOException $e) {
+			$error = [
+				'message' => $e->getMessage(),
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+			];
 
-	private function __construct($parameters)
-	{
-		$this->conn = new \PDO('mysql:host=' . $parameters->server 
-			. ';dbname=' . $parameters->database 
-			. ';charset=UTF8', $parameters->user, 
-			$parameters->password);
-		$this->conn->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-	}
-	/**
-	 * getInstance
-	 *
-	 * @return returns instance of \MonitoLib\Database\Connector\MySQL;
-	 */
-	public static function connect ($parameters)
-	{
-		if (!isset(self::$instance)) {
-			self::$instance = new \MonitoLib\Database\Connector\MySQL($parameters);
+			throw new DatabaseError('Erro ao conectar no banco de dados!', $error);
 		}
-
-		return self::$instance;
 	}
 	public function beginTransaction ()
 	{
@@ -49,87 +48,43 @@ class MySQL
 	{
 		$this->conn->commit();
 	}
-	public function rollback ()
-	{
-		$this->conn->rollback();
-	}
-	/**
-	 * getInstance
-	 *
-	 * @return returns instance of \jLib\Connector;
-	 */
-	public static function getInstance ()
+	public static function connect ($parameters)
 	{
 		if (!isset(self::$instance)) {
-			self::$instance = new \MonitoLib\Database\Connector;
+			self::$instance = new \MonitoLib\Database\Connector\MySQL($parameters);
 		}
 
 		return self::$instance;
 	}
-	public static function closeConnection ($conn = NULL)
+	public function execute ($stt)
 	{
-		if (is_null($conn)) {
-			foreach (self::$connections as $c) {
-				_vd($c);
-				$c->instance->close();
-			}
+		try {
+			$stt->execute();
+			return $stt;
+		} catch (\PDOException $e) {
+			$error = [
+				'message' => $e->getMessage(),
+				'file' => $e->getFile(),
+				'line' => $e->getLine(),
+			];
 
-			self::$connections = NULL;
-		} else {
-			if (key_exists($conn, self::$connections)) {
-				self::$connections->$conn->instance = NULL;
-				//unset(self::$connections->$conn);
-			}
+			throw new DatabaseError('Erro ao conectar no banco de dados!', $error);
 		}
 	}
-	public function getConfig ($conn = NULL)
+	public function fetchArrayAssoc ($stt)
 	{
-		if (count($this->connections) == 0) {
-			throw new \Exception('There is no connections!');
-		}
-
-		if (is_null($this->connection) and is_null($conn)) {
-			throw new \Exception('There is no default connection!');
-		}
-
-		if (is_null($conn)) {
-			$conn = $this->connection;
-		}
-
-		if (!isset($this->connections->$conn)) {
-			throw new \Exception("Connection $conn is not configured!");
-		}
-
-		return $this->connections->$conn;
+        return $stt->fetch(\PDO::FETCH_ASSOC);
 	}
-	public function getConnection ()
+	public function fetchArrayNum ($stt)
 	{
-		return $this->conn;
+        return $stt->fetch(\PDO::FETCH_NUM);
 	}
-	/**
-	 * getConnectionsList
-	 *
-	 * @return array Connections list
-	 */
-	public static function getConnectionsList ()
+	public function parse ($sql)
 	{
-		return self::$connections;
+        return $this->conn->prepare($sql);
 	}
-	public function getDbms ()
+	public function rollback ()
 	{
-		return $this->dbms;
-	}
-	/**
-	 * setConnection
-	 * 
-	 * @param string $conn Connection name
-	 */
-	public function setConnection ($conn)
-	{
-		if (!key_exists($conn, $this->connections)) {
-			throw new \Exception("There is no connection \"$conn\"!");
-		}
-
-		$this->connection = $conn;
+		$this->conn->rollback();
 	}
 }

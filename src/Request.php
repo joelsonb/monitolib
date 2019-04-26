@@ -7,10 +7,16 @@ namespace MonitoLib;
 
 class Request
 {
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
+
     static private $instance;
 
     private $json = [];
-    private $queryString = ['orderBy' => []];
+    private $queryString = [];
     private $requestUri;
     private $post;
     private $params;
@@ -30,16 +36,7 @@ class Request
     public function getJson ($asArray = false)
     {
         $this->json = json_decode(file_get_contents('php://input'), $asArray);
-
-        // if (is_null($key)) {
-            return $this->json;
-        // } else {
-        //  if (isset($this->json[$key])) {
-        //      return $this->json[$key];
-        //  } else {
-        //      return null;
-        //  }
-        // }
+        return $this->json;
     }
     public function getParam ($key = null)
     {
@@ -90,14 +87,16 @@ class Request
             $f = substr($field, 0, $p);
             $v = substr($field, $p + 1);
 
-            if (strtoupper($f) === 'ORDERBY') {
-                $this->queryString['orderBy'][] = $v;
+            if (strcasecmp($f, 'fields') === 0) {
+                $this->queryString['fields'] = $v;
+            } elseif (strcasecmp($f, 'page') === 0) {
+                $this->queryString['page'] = $v;
+            } elseif (strcasecmp($f, 'perpage') === 0) {
+                $this->queryString['perPage'] = $v;
+            } elseif (strcasecmp($f, 'orderby') === 0) {
+                $this->queryString['orderBy'][$f] = $v;
             } else {
-                if (substr($f, -2) == '[]') {
-                    $this->queryString['query'][][substr($f, 0, -2)][] = $v;
-                } else {
-                    $this->queryString['query'][][$f] = $v;
-                }
+                $this->queryString['query'][$f][] = $v;
             }
         }
     }

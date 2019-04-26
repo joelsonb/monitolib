@@ -10,6 +10,12 @@ namespace MonitoLib\Exception;
 
 class Forbidden extends \Exception
 {
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
+
     private $errors = [];
 
     public function __construct ($message = null, $errors = null, $code = 0, \Exception $previous = null)

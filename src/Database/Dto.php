@@ -2,6 +2,7 @@
 namespace MonitoLib\Database;
 
 use \MonitoLib\App;
+use \MonitoLib\Exception\InternalError;
 use \MonitoLib\Functions;
 
 class Dto
@@ -73,12 +74,12 @@ class Dto
         $output .= $prp . $get . $set . "}";
 
         if (!@file_put_contents(App::getCachePath() . $className . '.php', $output)) {
-            throw new \Exception("Error while saving cache data!");
+            throw new InternalError('Erro ao gravar o cache!');
         }
     }
     public static function get ($array)
     {
-        if (count($array) > 0) {
+        if (!empty($array)) {
             $properties = isset($array[0]) && is_array($array[0]) ? array_keys($array[0]) : array_keys($array);
             $className  = 'dto' . sha1(serialize($properties));
 

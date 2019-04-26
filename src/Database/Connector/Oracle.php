@@ -2,54 +2,45 @@
 /**
  * Database connector
  * @author Joelson B <joelsonb@msn.com>
- * @since 2013-12-10
  * @copyright Copyright &copy; 2013 - 2018
  *  
  * @package MonitoLib
  */
 namespace MonitoLib\Database\Connector;
 
+use \MonitoLib\Exception\DatabaseError;
+use \MonitoLib\Exception\InternalError;
+
 class Oracle
 {
-	const VERSION = '1.0.0';
+    const VERSION = '1.0.0';
+    /**
+    * 1.0.0 - 2019-04-17
+    * first versioned
+    */
 
 	private $conn;
-
-	private static $instance;
-
-	private $connection;
-	private $connections = [];
-	private $dbms;
-    private $executeMode = 32;
-    /*
-    * Modes:
-    * OCI_COMMIT_ON_SUCCESS: 32
-    * OCI_DESCRIBE_ONLY: 16
-    * OCI_NO_AUTO_COMMIT: 0
-    */
+    private $executeMode;
+    private static $instance;
 
 	private function __construct ($parameters)
 	{
-		// \MonitoLib\Dev::ee('came here');
-		$this->conn = oci_connect($parameters->user, $parameters->password, $parameters->server);
+		$this->executeMode = OCI_COMMIT_ON_SUCCESS;
+		$this->conn = @oci_connect($parameters->user, $parameters->password, $parameters->server, 'AL32UTF8');
 
 		if (!$this->conn) {
-			$m = oci_error();
-			throw new \Exception('Error connecting to Oracle database: ' . $m['message']);
-		}
-	}
-	/**
-	 * getInstance
-	 *
-	 * @return returns instance of \MonitoLib\Database\Connector\MySQL;
-	 */
-	public static function connect ($parameters)
-	{
-		if (!isset(self::$instance)) {
-			self::$instance = new \MonitoLib\Database\Connector\Oracle($parameters);
-		}
 
-		return self::$instance;
+			$db = debug_backtrace();
+			$e  = oci_error();
+
+			$error = [
+				'message' => $e['message'],
+				'file' => $db[1]['file'],
+				'line' => $db[1]['line'],
+			];
+
+			throw new DatabaseError('Erro ao conectar no banco de dados!', $error);
+		}
 	}
 	public function beginTransaction ()
 	{
@@ -60,92 +51,50 @@ class Oracle
 		@oci_commit($this->conn);
 		$this->executeMode = OCI_COMMIT_ON_SUCCESS;
 	}
+	public static function connect ($parameters)
+	{
+		if (!isset(self::$instance)) {
+			self::$instance = new \MonitoLib\Database\Connector\Oracle($parameters);
+		}
+
+		return self::$instance;
+	}
+	public function execute ($stt)
+	{
+		$exe = @oci_execute($stt, $this->executeMode);
+
+        if (!$exe) {
+            $e = oci_error($stt);
+            throw new DatabaseError('Ocorreu um erro no banco de dados!', $e);
+        }
+
+        return $stt;
+	}
+	public function fetchArrayAssoc ($stt)
+	{
+        return oci_fetch_array($stt, OCI_ASSOC | OCI_RETURN_NULLS);
+	}
+	public function fetchArrayNum ($stt)
+	{
+        return oci_fetch_array($stt, OCI_NUM | OCI_RETURN_NULLS);
+	}
+	public function parse ($sql)
+	{
+		$stt = oci_parse($this->conn, $sql);
+        return $stt;
+	}
 	public function rollback ()
 	{
 		@oci_rollback($this->conn);
 		$this->executeMode = OCI_COMMIT_ON_SUCCESS;
 	}
-	/**
-	 * getInstance
-	 *
-	 * @return returns instance of \jLib\Connector;
-	 */
-	public static function getInstance ()
+	public function transform ($function)
 	{
-		if (!isset(self::$instance)) {
-			self::$instance = new \MonitoLib\Database\Connector;
+		switch ($function) {
+			case 'UPPERCASE':
+				return 'UPPER';
+			default:
+				return $function;
 		}
-
-		return self::$instance;
-	}
-	public static function closeConnection ($conn = NULL)
-	{
-		if (is_null($conn)) {
-			foreach (self::$connections as $c) {
-				_vd($c);
-				$c->instance->close();
-			}
-
-			self::$connections = NULL;
-		} else {
-			if (key_exists($conn, self::$connections)) {
-				self::$connections->$conn->instance = NULL;
-				//unset(self::$connections->$conn);
-			}
-		}
-	}
-	public function execute ($stt)
-	{
-		return @oci_execute($stt, $this->executeMode);
-	}
-	public function getConfig ($conn = NULL)
-	{
-		if (count($this->connections) == 0) {
-			throw new \Exception('There is no connections!');
-		}
-
-		if (is_null($this->connection) and is_null($conn)) {
-			throw new \Exception('There is no default connection!');
-		}
-
-		if (is_null($conn)) {
-			$conn = $this->connection;
-		}
-
-		if (!isset($this->connections->$conn)) {
-			throw new \Exception("Connection $conn is not configured!");
-		}
-
-		return $this->connections->$conn;
-	}
-	public function getConnection ()
-	{
-		return $this->conn;
-	}
-	/**
-	 * getConnectionsList
-	 *
-	 * @return array Connections list
-	 */
-	public static function getConnectionsList ()
-	{
-		return self::$connections;
-	}
-	public function getDbms ()
-	{
-		return $this->dbms;
-	}
-	/**
-	 * setConnection
-	 * 
-	 * @param string $conn Connection name
-	 */
-	public function setConnection ($conn)
-	{
-		if (!key_exists($conn, $this->connections)) {
-			throw new \Exception("There is no connection \"$conn\"!");
-		}
-
-		$this->connection = $conn;
 	}
 }
