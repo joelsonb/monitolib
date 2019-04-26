@@ -12,8 +12,8 @@
         "php": ">=7.0.0"
     },
     "scripts": {
-        "post-install-cmd": "MonitoLib\\Install::postComposer",
-        "post-update-cmd": "MonitoLib\\Install::postComposer"
+        "post-package-install": "MonitoLib\\Install::postComposer",
+        "post-package-update": "MonitoLib\\Install::postComposer"
     },
     "autoload": {
         "psr-4": {
