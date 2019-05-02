@@ -13,8 +13,11 @@ use \MonitoLib\Exception\InternalError;
 
 class Oracle
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
     /**
+    * 1.0.1 - 2019-05-02
+    * new: exception on parse error
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */
@@ -64,7 +67,7 @@ class Oracle
 		$exe = @oci_execute($stt, $this->executeMode);
 
         if (!$exe) {
-            $e = oci_error($stt);
+            $e = @oci_error($stt);
             throw new DatabaseError('Ocorreu um erro no banco de dados!', $e);
         }
 
@@ -80,7 +83,13 @@ class Oracle
 	}
 	public function parse ($sql)
 	{
-		$stt = oci_parse($this->conn, $sql);
+		$stt = @oci_parse($this->conn, $sql);
+
+        if (!$stt) {
+            $e = @oci_error($stt);
+            throw new DatabaseError('Ocorreu um erro no banco de dados!', $e);
+        }
+
         return $stt;
 	}
 	public function rollback ()

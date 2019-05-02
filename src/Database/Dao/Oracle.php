@@ -8,8 +8,11 @@ use \MonitoLib\Functions;
 
 class Oracle extends Base implements \MonitoLib\Database\Dao
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
     /**
+    * 1.0.1 - 2019-05-02
+    * fix: checks returned value from get function
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */
@@ -99,7 +102,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     public function get ()
     {
         $res = $this->list();
-        return $res[0];
+        return isset($res[0]) ? $res[0] : null;
     }
     public function getById (...$params)
     {

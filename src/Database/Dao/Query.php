@@ -7,17 +7,21 @@ use \MonitoLib\Validator;
 
 class Query
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
     /**
+    * 1.1.0 - 2019-05-02
+    * new: removed parseRequest
+    * fix: CHECK_NULL constant name
+    * 
     * 1.0.0 - 2019-04-07
     * First versioned
     */
 
     const FIXED_QUERY = 1;
-    const CHECK_null = 2;
-    const RAW_QUERY = 4;
+    const CHECK_NULL  = 2;
+    const RAW_QUERY   = 4;
 
-    const DB_MYSQL = 1;
+    const DB_MYSQL  = 1;
     const DB_ORACLE = 2;
 
     private $criteria;
@@ -26,9 +30,9 @@ class Query
 
     private $selectedFields;
 
-    private $page        = 1;
-    private $perPage     = 0;
-    private $orderBY     = [];
+    private $page    = 1;
+    private $perPage = 0;
+    private $orderBy = [];
     private $sql;
     private $sqlCount;
 
@@ -40,17 +44,6 @@ class Query
     private $orderBySqlReady = false;
 
     private $modelFields;
-
-    public function __construct ($sqlQuery = null)
-    {
-        // $this->sql = $sqlQuery;
-        // $this->fields = $this->model->getFields();
-        $this->parseRequest();
-    }
-    public function __toString ()
-    {
-        return $this->render();
-    }
 
     public function andIn ($field, $values, $modifiers = 0)
     {
@@ -145,12 +138,12 @@ class Query
 
     private function addCriteriaParser ($logicalOperator, $comparisonOperator, $field, $value, $modifiers = 0)
     {
-        $fields = $this->getModelFields();
-        $type = $fields[$field]['type'];
-        $name = $fields[$field]['name'];
+        $field = $this->checkIfFieldExists($field);
+        $type = $field['type'];
+        $name = $field['name'];
 
         $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
-        $null  = ($modifiers & self::CHECK_null) === self::CHECK_null;
+        $null  = ($modifiers & self::CHECK_NULL) === self::CHECK_NULL;
         $raw   = ($modifiers & self::RAW_QUERY) === self::RAW_QUERY;
 
         if (is_null($value) && $null) {
@@ -174,9 +167,6 @@ class Query
         if ($fixed) {
             $this->fixedCriteria .= $sql;
         }
-
-        // \MonitoLib\Dev::vd($this->criteria);
-
 
         return $this;
     }
@@ -251,10 +241,6 @@ class Query
     }
     public function andFilter ($field, $value, $type = 'string')
     {
-        // \MonitoLib\Dev::ee("andFilter\n");
-        // \MonitoLib\Dev::ee($type);
-        // $value = urldecode($value);
-
         $type = strtolower($type);
 
         switch ($type) {
@@ -293,11 +279,6 @@ class Query
                             break;
                     }
 
-                    // if ($type === 'date') {
-                    //     $this->$method($field, "TO_DATE('{$m[2]}', 'YYYY-MM-DD')", self::RAW_QUERY);
-                    //     continue;
-                    // }
-
                     if ($type === 'date') {
                         $v = $m[2];
 
@@ -330,67 +311,50 @@ class Query
                 break;
             case 'string':
             default:
-                // foreach ($strings as $s) {
-                    $m = 'andEqual';
-                    $s = urldecode($value);
-                    $a = '';
-                    $b = '';
+                $m = 'andEqual';
+                $s = urldecode($value);
+                $a = '';
+                $b = '';
 
-                    \MonitoLib\Dev::e($s);
-
-                    if (substr($s, 0, 1) === '%') {
-                        // $s = substr($s, 1);
-                        $a = '%';
-                        $m = 'andLike';
-                    }
+                if (substr($s, 0, 1) === '%') {
+                    // $s = substr($s, 1);
+                    $a = '%';
+                    $m = 'andLike';
+                }
 
 
-                    echo substr($s, -1) . '=== %' . PHP_EOL . PHP_EOL;
+                if (substr($s, -1) === '%') {
+                    // $s = substr($s, 0, -1);
+                    $b = '%';
+                    $m = 'andLike';
+                }
 
-                    if (substr($s, -1) === '%') {
-                        // $s = substr($s, 0, -1);
-                        $b = '%';
-                        $m = 'andLike';
-                    }
+                $f = substr($s, 0, 1);
+                $l = substr($s, -1);
 
-                    // $value   = urldecode($value);
-                    // $strings = explode(' ', $value);
+                if ($f === '"' && $l === '"') {
+                    $s = substr($s, 1, -1);
+                }
 
+                if ($f === '!') {
+                    $m = 'andNotLike';
+                    $s = substr($s, 1);
                     $f = substr($s, 0, 1);
-                    $l = substr($s, -1);
+                }
 
-                    if ($f === '"' && $l === '"') {
-                        $s = substr($s, 1, -1);
-                    }
+                if ($f === '%') {
+                    $f = substr($s, 0, 1);
+                } else {
+                    $a = '';
+                }
 
-                    if ($f === '!') {
-                        $m = 'andNotLike';
-                        $s = substr($s, 1);
-                        $f = substr($s, 0, 1);
-                    }
+                if ($l === '%') {
+                    $s = substr($s, 0, -1);
+                } else {
+                    $b = '';
+                }
 
-                    if ($f === '%') {
-                        $f = substr($s, 0, 1);
-                    } else {
-                        $a = '';
-                    }
-
-                    if ($l === '%') {
-                        $s = substr($s, 0, -1);
-                    } else {
-                        $b = '';
-                    }
-
-                    // if ($a === $b) {
-                    //     $a = $b = '%';
-                    // }
-
-                    $this->$m($field, "{$a}{$s}{$b}");
-                // }
-
-                // break;
-            // default:
-                // throw new BadRequest('Tipo de campo inválido!');
+                $this->$m($field, "{$a}{$s}{$b}");
         }
 
         return $this;
@@ -405,12 +369,14 @@ class Query
 
         if (isset($this->modelFields[$field])) {
             return $this->modelFields[$field];
-        } else {
-            return "O campo $field não existe no modelo de dados!";
         }
+
+        throw new BadRequest("O campo $field não existe no modelo de dados!");
     }
     public function orderBy ($field, $direction = 'ASC')
     {
+        $this->checkIfFieldExists($field);
+
         $this->orderBy[$field] = strtoupper($direction);
         return $this;
     }
@@ -528,12 +494,10 @@ class Query
 
         $list = substr($list, 0, -2);
 
-        // \MonitoLib\Dev::ee($list);
         return $list;
     }
     public function getWhereSql ($fixed = false)
     {
-        // \MonitoLib\Dev::e($this->criteria);
         $criteria = $fixed ? $this->fixedCriteria : $this->criteria;
         $sql = '';
 
@@ -552,77 +516,6 @@ class Query
         }
 
         return $sql;
-    }
-    private function parseRequest ()
-    {
-        $request     = \MonitoLib\Request::getInstance();
-        $queryString = $request->getQueryString();
-
-        $selectedFields = [];
-
-        $errors = [];
-
-        foreach ($queryString as $key => $value) {
-            switch ($key) {
-                case 'fields':
-                    if ($value === '') {
-                        throw new BadRequest('É preciso informar pelo menos um campo!');
-                    }
-
-                    $parts = explode(',', $value);
-
-                    foreach ($parts as $v) {
-                        $field = $this->checkIfFieldExists($v);
-
-                        if (is_array($field)) {
-                            $this->selectedFields[$v] = $field;
-                        } else {
-                            $errors = $field;
-                        }
-                    }
-                    break;
-                case 'page':
-                    if (!is_numeric($value) && !is_integer(+$value)) {
-                        throw new BadRequest('Número da página inválido!');
-                    }
-                    $this->page = $value;
-                    break;
-                case 'perPage':
-                    if (!is_numeric($value) && !is_integer(+$value)) {
-                        throw new BadRequest('Quantidade por página inválida!');
-                    }
-                    $this->perPage = $value;
-                    break;
-                case 'orderBy':
-                    foreach ($value as $v) {
-                        $parts = explode(',', $v);
-                        $field = $this->checkIfFieldExists($parts[0]);
-
-                        if (is_array($field)) {
-                            $this->orderBy[$field['name']] = $parts[1];
-                        } else {
-                            $errors = $field;
-                        }
-                    }
-                    break;
-                case 'query':
-                    foreach ($value as $k => $val) {
-                        $field = $this->checkIfFieldExists($k);
-
-                        if (is_array($field)) {
-                            foreach ($val as $v) {
-                                $this->andFilter($k, $v, $field['type']);
-                            }
-                        } else {
-                            $errors = $field;
-                        }
-                    }
-            }
-        }
-
-        if (!empty($errors)) {
-            throw new BadRequest('Campo informado não existe no modelo de dados!', $errors);
-        }
     }
     public function renderSelectSql ()
     {
@@ -643,11 +536,7 @@ class Query
         $this->criteria      = null;
         $this->countCriteria = null;
         $this->fixedCriteria = null;
-        $this->command       = 'SELECT';
         $this->page          = 1;
-        $this->limitStart    = 0;
-        $this->limitOffset   = 0;
-        $this->sort          = [];
         $this->sql           = null;
         $this->reseted       = true;
         return $this;
@@ -665,6 +554,28 @@ class Query
         $this->dbms = $dbms;
     }
     public function setFields ($fields) {
+        if (is_null($fields)) {
+            return $this;
+        }
+
+        if (empty($fields)) {
+            throw new BadRequest('É preciso informar pelo menos um campo!');
+        }
+
+        foreach ($fields as $f) {
+            $field = $this->checkIfFieldExists($f);
+
+            if (is_array($field)) {
+                $this->selectedFields[$f] = $field;
+            } else {
+                $errors = $field;
+            }
+        }
+
+        if (!empty($errors)) {
+            throw new BadRequest('Campo informado não existe no modelo de dados!', $errors);
+        }
+
         $this->fields = $fields;
         return $this;
     }
@@ -672,14 +583,49 @@ class Query
         $this->model = $model;
         return $this;
     }
+    public function setOrderBy ($orderBy)
+    {
+        if (!empty($orderBy)) {
+            foreach ($orderBy as $f => $d) {
+                if (is_numeric($f)) {
+                    $f = $d;
+                }
+
+                $this->orderBy($f, $d);
+            }
+        }
+
+        return $this;
+    }
     public function setPage ($page)
     {
+        if (!is_numeric($page) && !is_integer(+$page)) {
+            throw new BadRequest('Número da página inválido!');
+        }
+
         $this->page = $page;
         return $this;
     }
     public function setPerPage ($perPage)
     {
+        if (!is_numeric($perPage) && !is_integer(+$perPage)) {
+            throw new BadRequest('Quantidade por página inválida!');
+        }
+
         $this->perPage = $perPage;
+        return $this;
+    }
+    public function setQuery ($query)
+    {
+        if (!empty($query)) {
+            foreach ($query as $field) {
+                foreach ($field as $f => $v) {
+                    $f = $this->checkIfFieldExists($f);
+                    $this->andFilter($f['name'], $v, $f['type']);
+                }
+            }
+        }
+
         return $this;
     }
     public function setSql ($sql)

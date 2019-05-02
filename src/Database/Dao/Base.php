@@ -7,8 +7,11 @@ use \MonitoLib\Functions;
 
 class Base extends Query
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
     /**
+    * 1.1.0 - 2019-05-02
+    * new: removed parent::__constructor call
+    *
     * 1.0.0 - 2019-04-17
     * initial release
     */
@@ -34,12 +37,9 @@ class Base extends Query
         if (class_exists($model)) {
             $this->model = new $model;
         }
-
-        parent::__construct();
     }
     public function checkUnique ($uniqueConstraints, $dto)
     {
-        // \MonitoLib\Dev::pre($uniqueConstraints);
         if (!empty($uniqueConstraints)) {
             $errors = [];
 

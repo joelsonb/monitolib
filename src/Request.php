@@ -7,8 +7,11 @@ namespace MonitoLib;
 
 class Request
 {
-    const VERSION = '1.0.0';
+    const VERSION = '2.0.0';
     /**
+    * 2.0.0 - 2019-05-02
+    * new: new gets
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */
@@ -21,6 +24,12 @@ class Request
     private $post;
     private $params;
 
+    private $fields;
+    private $orderBy;
+    private $page;
+    private $perPage;
+    private $query;
+
     private function __construct ()
     {
         $this->post = $_POST;
@@ -28,15 +37,40 @@ class Request
     public static function getInstance ()
     {
         if (!isset(self::$instance)) {
-            self::$instance = new \MonitoLib\Request;
+            self::$instance = new Request;
         }
 
         return self::$instance;
+    }
+    public function getFields ()
+    {
+        if (is_null($this->fields)) {
+            if (isset($this->queryString['fields'])) {
+                $this->fields = explode(',', $this->queryString['fields']);
+            }
+        }
+
+        return $this->fields;
     }
     public function getJson ($asArray = false)
     {
         $this->json = json_decode(file_get_contents('php://input'), $asArray);
         return $this->json;
+    }
+    public function getOrderBy ()
+    {
+        if (is_null($this->orderBy) && (isset($this->queryString['orderBy']))) {
+            foreach ($this->queryString['orderBy'] as $value) {
+                $p = explode(',', $value);
+                $this->orderBy[$p[0]] = $p[1] ?? '';
+            }
+        }
+
+        return $this->orderBy;
+    }
+    public function getPage ()
+    {
+        return $this->page;
     }
     public function getParam ($key = null)
     {
@@ -50,6 +84,10 @@ class Request
             }
         }
     }
+    public function getPerPage ()
+    {
+        return $this->perPage;
+    }
     public function getPost ($key = null)
     {
         if (is_null($key)) {
@@ -61,6 +99,10 @@ class Request
                 return null;
             }
         }
+    }
+    public function getQuery ()
+    {
+        return $this->query;
     }
     public function getQueryString ($key = null)
     {
@@ -90,13 +132,13 @@ class Request
             if (strcasecmp($f, 'fields') === 0) {
                 $this->queryString['fields'] = $v;
             } elseif (strcasecmp($f, 'page') === 0) {
-                $this->queryString['page'] = $v;
+                $this->page = $v;
             } elseif (strcasecmp($f, 'perpage') === 0) {
-                $this->queryString['perPage'] = $v;
+                $this->perPage = $v;
             } elseif (strcasecmp($f, 'orderby') === 0) {
-                $this->queryString['orderBy'][$f] = $v;
+                $this->queryString['orderBy'][] = $v;
             } else {
-                $this->queryString['query'][$f][] = $v;
+                $this->query[] = [$f => $v];
             }
         }
     }

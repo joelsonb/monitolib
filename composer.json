@@ -11,10 +11,6 @@
     "require": {
         "php": ">=7.0.0"
     },
-    "scripts": {
-        "post-package-install": "MonitoLib\\Install::postComposer",
-        "post-package-update": "MonitoLib\\Install::postComposer"
-    },
     "autoload": {
         "psr-4": {
             "MonitoLib\\": "src"

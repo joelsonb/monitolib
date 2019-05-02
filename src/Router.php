@@ -12,8 +12,11 @@ use \MonitoLib\Functions;
 
 class Router
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
     /**
+    * 1.0.1 - 2019-05-02
+    * fix: checks OPTIONS request method on check function
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */
@@ -82,6 +85,10 @@ class Router
     }
     static public function check ($request)
     {
+        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+            return;
+        }
+
         if (PHP_SAPI == 'cli') {
             $requestMethod = 'CLI';
             $params = $request->getParam();

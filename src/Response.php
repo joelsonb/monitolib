@@ -9,8 +9,11 @@ use \MonitoLib\Functions;
 
 class Response
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
     /**
+    * 1.1.0 - 2019-05-02
+    * fix: checks $dataset['data']
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */
@@ -56,7 +59,10 @@ class Response
 	}
 	public function setDataset ($dataset)
 	{
-		$dataset['data'] = $this->toArray($dataset['data']);
+		if (isset($dataset['data'])) {
+			$dataset['data'] = $this->toArray($dataset['data']);
+		}
+
 		$this->json = Functions::arrayMergeRecursive($this->json, $dataset);
 		return $this;
 	}

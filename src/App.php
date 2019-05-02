@@ -189,7 +189,7 @@ class App
     }
     public static function setIsLoggedIn ($isLoggedIn)
     {
-        self::$setIsLoggedIn = $isLoggedIn;
+        self::$isLoggedIn = $isLoggedIn;
     }
     public static function setDebug ($debug)
     {
