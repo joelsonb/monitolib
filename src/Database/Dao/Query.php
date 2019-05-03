@@ -7,8 +7,11 @@ use \MonitoLib\Validator;
 
 class Query
 {
-    const VERSION = '1.1.0';
+    const VERSION = '1.1.1';
     /**
+    * 1.1.1 - 2019-05-03
+    * new: getSelectFields checks format
+    *
     * 1.1.0 - 2019-05-02
     * new: removed parseRequest
     * fix: CHECK_NULL constant name
@@ -472,7 +475,7 @@ class Query
     {
         return $this->perPage;
     }
-    protected function getSelectFields ()
+    protected function getSelectFields ($format = true)
     {
         $list     = '';
         $selected = $this->selectedFields;
@@ -484,7 +487,7 @@ class Query
         foreach ($selected as $k => $v) {
             $field = $v['name'];
 
-            if ($v['type'] === 'date' && $this->dbms === 2) {
+            if ($format && $v['type'] === 'date' && $this->dbms === 2) {
                 $mask  = 'YYYY-MM-DD' . ($v['format'] === 'Y-m-d H:i:s' ? ' HH24:MI:SS' : '');
                 $field = "TO_CHAR($field, '$mask') AS $field";
             }

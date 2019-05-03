@@ -8,8 +8,11 @@ use \MonitoLib\Functions;
 
 class Oracle extends Base implements \MonitoLib\Database\Dao
 {
-    const VERSION = '1.0.1';
+    const VERSION = '1.0.2';
     /**
+    * 1.0.2 - 2019-05-03
+    * fix: dataset for date fields
+    *
     * 1.0.1 - 2019-05-02
     * fix: checks returned value from get function
     *
@@ -67,7 +70,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
                 if ($perPage > 0) {
                     $startRow = (($page - 1) * $perPage) + 1;
                     $endRow   = $perPage * $page;
-                    $sqlData  = "SELECT {$this->getSelectFields()} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sqlData) a) WHERE rown_ BETWEEN $startRow AND $endRow";
+                    $sqlData  = "SELECT {$this->getSelectFields(true)} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sqlData) a) WHERE rown_ BETWEEN $startRow AND $endRow";
                 }
 
                 // Reset $sql
