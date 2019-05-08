@@ -7,8 +7,12 @@ use \MonitoLib\Validator;
 
 class Query
 {
-    const VERSION = '1.1.1';
+    const VERSION = '1.1.2';
     /**
+    * 1.1.2 - 2019-05-05
+    * fix: getSelectFields parameter on dataset method
+    * fix: checkIfFieldExists in all query methods
+    *
     * 1.1.1 - 2019-05-03
     * new: getSelectFields checks format
     *
@@ -50,6 +54,8 @@ class Query
 
     public function andIn ($field, $values, $modifiers = 0)
     {
+        $field = $this->checkIfFieldExists($field);
+
         if (empty($values)) {
             throw new BadRequest('Valores inválidos!');
         }
@@ -68,9 +74,11 @@ class Query
 
         $value = substr($value, 0, -1);
 
-        $sql = "$field IN ($value) AND ";
+        $sql = "{$field['name']} IN ($value) AND ";
 
         $this->criteria .= $sql;
+
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
 
         if ($fixed) {
             $this->fixedCriteria .= $sql;
@@ -83,6 +91,8 @@ class Query
         $sql = '(';
 
         $this->criteria .= $sql;
+
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
 
         if ($fixed) {
             $this->fixedCriteria .= $sql;
@@ -100,6 +110,8 @@ class Query
 
         $this->criteria .= $sql;
 
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
+
         if ($fixed) {
             $this->fixedCriteria .= $sql;
         }
@@ -116,6 +128,8 @@ class Query
 
         $this->criteria .= $sql;
 
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
+
         if ($fixed) {
             $this->fixedCriteria .= $sql;
         }
@@ -131,6 +145,8 @@ class Query
         }
 
         $this->criteria .= $sql;
+
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
 
         if ($fixed) {
             $this->fixedCriteria .= $sql;
@@ -150,7 +166,7 @@ class Query
         $raw   = ($modifiers & self::RAW_QUERY) === self::RAW_QUERY;
 
         if (is_null($value) && $null) {
-            return $this->andIsNull($name, $fixed);
+            return $this->andIsNull($field, $fixed);
         }
 
         if ($raw || $type === 'int') {
@@ -190,9 +206,12 @@ class Query
     }
     public function andIsNull ($field, $modifiers = 0)
     {
-        $sql = "$field IS null AND ";
+        $field = $this->checkIfFieldExists($field);
+        $sql = "{$field['name']} IS null AND ";
 
         $this->criteria .= $sql;
+
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
 
         if ($fixed) {
             $this->fixedCriteria .= $sql;
@@ -222,9 +241,12 @@ class Query
     }
     public function andIsNotNull ($field, $modifiers = 0)
     {
-        $sql = "$field IS NOT null AND ";
+        $field = $this->checkIfFieldExists($field);
+        $sql = "{$field['name']} IS NOT null AND ";
 
         $this->criteria .= $sql;
+
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
 
         if ($fixed) {
             $this->fixedCriteria .= $sql;
@@ -390,10 +412,13 @@ class Query
     }
     public function orIsNull ($field, $modifiers = 0)
     {
-        $sql = "$field IS null OR ";
+        $field = $this->checkIfFieldExists($field);
+        $sql = "{$field['name']} IS null OR ";
 
         $this->criteria .= $sql;
 
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
+        
         if ($fixed) {
             $this->fixedCriteria .= $sql;
         }
@@ -422,9 +447,12 @@ class Query
     }
     public function orIsNotNull ($field, $modifiers = 0)
     {
-        $sql = "$field IS NOT null OR ";
+        $field = $this->checkIfFieldExists($field);
+        $sql = "{$field['name']} IS NOT null OR ";
 
         $this->criteria .= $sql;
+
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
 
         if ($fixed) {
             $this->fixedCriteria .= $sql;

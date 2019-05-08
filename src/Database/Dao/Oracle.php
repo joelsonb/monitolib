@@ -8,8 +8,11 @@ use \MonitoLib\Functions;
 
 class Oracle extends Base implements \MonitoLib\Database\Dao
 {
-    const VERSION = '1.0.2';
+    const VERSION = '1.0.3';
     /**
+    * 1.0.3 - 2019-05-05
+    * fix: date format on update
+    *
     * 1.0.2 - 2019-05-03
     * fix: dataset for date fields
     *
@@ -70,7 +73,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
                 if ($perPage > 0) {
                     $startRow = (($page - 1) * $perPage) + 1;
                     $endRow   = $perPage * $page;
-                    $sqlData  = "SELECT {$this->getSelectFields(true)} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sqlData) a) WHERE rown_ BETWEEN $startRow AND $endRow";
+                    $sqlData  = "SELECT {$this->getSelectFields(false)} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sqlData) a) WHERE rown_ BETWEEN $startRow AND $endRow";
                 }
 
                 // Reset $sql
@@ -255,7 +258,15 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
             if ($f['primary']) {
                 $key .= "$name = :$name AND ";
             } else {
-                $fld .= "$name = " . ($f['transform'] ?? ":$name") . ',';
+                switch ($f['type']) {
+                    case 'date':
+                        $format = $f['format'] === 'Y-m-d H:i:s' ? 'YYYY-MM-DD HH24:MI:SS' : 'YYYY-MM-DD'; 
+                        $fld .= "$name = TO_DATE(:{$f['name']}, '$format'),";
+                        break;
+                    default:
+                        $fld .= "$name = " . ($f['transform'] ?? ":$name") . ',';
+                        break;
+                }
             }
         }
 
