@@ -7,8 +7,11 @@ use \MonitoLib\Validator;
 
 class Query
 {
-    const VERSION = '1.1.2';
+    const VERSION = '1.1.3';
     /**
+    * 1.1.3 - 2019-06-05
+    * fix: removed checkIfFieldExists from setQuery
+    *
     * 1.1.2 - 2019-05-05
     * fix: getSelectFields parameter on dataset method
     * fix: checkIfFieldExists in all query methods
@@ -266,7 +269,8 @@ class Query
     }
     public function andFilter ($field, $value, $type = 'string')
     {
-        $type = strtolower($type);
+        $f = $this->checkIfFieldExists($field);
+        $type = $f['type'];
 
         switch ($type) {
             case 'date':
@@ -324,14 +328,8 @@ class Query
                     $this->$method($field, $m[2]);
                     break;
                 } else {
-                    // $this->andEqual($field, $value);
                     throw new BadRequest('Valor inválido!');
                 }
-
-                // Verifica se é lista
-                // if (preg_match('/^[0-9.,\s]+$/', $value, $m)) {
-                //     $this->andIn($field, explode(',', $m[0]));
-                // }
 
                 break;
             case 'string':
@@ -342,14 +340,11 @@ class Query
                 $b = '';
 
                 if (substr($s, 0, 1) === '%') {
-                    // $s = substr($s, 1);
                     $a = '%';
                     $m = 'andLike';
                 }
 
-
                 if (substr($s, -1) === '%') {
-                    // $s = substr($s, 0, -1);
                     $b = '%';
                     $m = 'andLike';
                 }
@@ -396,7 +391,7 @@ class Query
             return $this->modelFields[$field];
         }
 
-        throw new BadRequest("O campo $field não existe no modelo de dados!");
+        throw new BadRequest('O campo {' . $field . '} não existe no modelo ' . get_class($this->getModel()) . '!');
     }
     public function orderBy ($field, $direction = 'ASC')
     {
@@ -562,7 +557,7 @@ class Query
 
         return $sql;
     }
-    protected function reset ()
+    public function reset ()
     {
         $this->criteria      = null;
         $this->countCriteria = null;
@@ -650,10 +645,8 @@ class Query
     {
         if (!empty($query)) {
             foreach ($query as $field) {
-                foreach ($field as $f => $v) {
-                    $f = $this->checkIfFieldExists($f);
-                    $this->andFilter($f['name'], $v, $f['type']);
-                }
+                $key = key($field);
+                $this->andFilter($key, $field[$key]);
             }
         }
 

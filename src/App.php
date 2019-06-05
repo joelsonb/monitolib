@@ -6,11 +6,16 @@ use \MonitoLib\Functions;
 
 class App
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
     /**
+    * 1.1.0 - 2019-06-05
+    * new: createPath, getDocumentRoot
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */
+
+    const DS = DIRECTORY_SEPARATOR;
 
     static private $debug = 0;
     static private $instance;
@@ -25,9 +30,23 @@ class App
     private function __construct ()
     {
     }
+    public static function createPath ($path)
+    {
+        if (!file_exists($path)) {
+            if (!@mkdir($path, 0755, true)) {
+                throw new InternalError("Erro ao criar o diretório $path");
+            }
+        }
+
+        return $path;
+    }
     public static function getDebug ()
     {
         return self::$debug;
+    }
+    public static function getDocumentRoot ()
+    {
+        return $_SERVER['DOCUMENT_ROOT'] . self::DS;
     }
     public static function getInstance ()
     {

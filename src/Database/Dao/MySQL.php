@@ -7,8 +7,11 @@ use \MonitoLib\Functions;
 
 class MySQL extends Base implements \MonitoLib\Database\Dao
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
     /**
+    * 1.0.1 - 2019-05-08
+    * fix: checks returned value from get function
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */
@@ -85,11 +88,11 @@ class MySQL extends Base implements \MonitoLib\Database\Dao
         $stt = $this->connection->parse($sql);
         $this->connection->execute($stt);
 
-        // Reset filter
+        // Reset query
         $this->reset();
 
         if ($stt->rowCount() === 0) {
-            throw new BadRequest('Não foi possível atualizar!');
+            // throw new BadRequest('Não foi possível deletar!');
         }
     }
     /**
@@ -98,7 +101,7 @@ class MySQL extends Base implements \MonitoLib\Database\Dao
     public function get ()
     {
         $res = $this->list();
-        return $res[0];
+        return isset($res[0]) ? $res[0] : null;
     }
     /**
     * getById
@@ -179,6 +182,7 @@ class MySQL extends Base implements \MonitoLib\Database\Dao
         }
 
         $this->connection->execute($stt);
+        $this->reset();
     }
     /**
     * list
@@ -238,7 +242,10 @@ class MySQL extends Base implements \MonitoLib\Database\Dao
         $key = substr($key, 0, -5);
         $fld = substr($fld, 0, -1);
 
+        // \MonitoLib\Dev::pre($dto);
+
         $sql = 'UPDATE ' . $this->model->getTableName() . " SET $fld WHERE $key";
+        // \MonitoLib\Dev::ee($sql);
         $stt = $this->connection->parse($sql);
 
         foreach ($this->model->getFields() as $f) {
@@ -251,8 +258,10 @@ class MySQL extends Base implements \MonitoLib\Database\Dao
 
         $this->connection->execute($stt);
 
+        $this->reset();
+
         if ($stt->rowCount() === 0) {
-            throw new BadRequest('Não foi possível atualizar!');
+            // throw new BadRequest("Não foi possível atualizar a tabela {$this->model->getTableName()}!");
         }
 
         $stt = null;

@@ -159,7 +159,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
 
             switch ($f['type']) {
                 case 'date':
-                    $format = $f['format'] === 'Y-m-d H:i:s' ? 'YYYY-MM-DD HH24:MI:SS' : 'YYYY-MM-DD'; 
+                    $format = $f['format'] === 'Y-m-d H:i:s' ? 'YYYY-MM-DD HH24:MI:SS' : 'YYYY-MM-DD';
                     $val .= "TO_DATE(:{$f['name']}, '$format'),";
                     break;
                 default:
@@ -260,7 +260,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
             } else {
                 switch ($f['type']) {
                     case 'date':
-                        $format = $f['format'] === 'Y-m-d H:i:s' ? 'YYYY-MM-DD HH24:MI:SS' : 'YYYY-MM-DD'; 
+                        $format = $f['format'] === 'Y-m-d H:i:s' ? 'YYYY-MM-DD HH24:MI:SS' : 'YYYY-MM-DD';
                         $fld .= "$name = TO_DATE(:{$f['name']}, '$format'),";
                         break;
                     default:

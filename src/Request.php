@@ -7,8 +7,11 @@ namespace MonitoLib;
 
 class Request
 {
-    const VERSION = '2.0.0';
+    const VERSION = '2.0.1';
     /**
+    * 2.0.1 - 2019-06-05
+    * fix: getPage and getPerPage to return only valid numbers
+    *
     * 2.0.0 - 2019-05-02
     * new: new gets
     *
@@ -70,7 +73,7 @@ class Request
     }
     public function getPage ()
     {
-        return $this->page;
+        return (is_numeric($this->page) && $this->page > 0) ? $this->page : 1;
     }
     public function getParam ($key = null)
     {
@@ -86,7 +89,7 @@ class Request
     }
     public function getPerPage ()
     {
-        return $this->perPage;
+        return (is_numeric($this->perPage) && $this->perPage > 0) ? $this->perPage : 0;
     }
     public function getPost ($key = null)
     {
