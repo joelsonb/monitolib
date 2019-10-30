@@ -6,8 +6,11 @@ use \MonitoLib\Functions;
 
 class App
 {
-    const VERSION = '1.1.0';
+    const VERSION = '1.2.0';
     /**
+    * 1.2.0 - 2019-09-12
+    * new: today
+    *
     * 1.1.0 - 2019-06-05
     * new: createPath, getDocumentRoot
     *
@@ -181,6 +184,7 @@ class App
             header('Content-Type: application/json');
 
             if (empty($return['error'])) {
+                $response = \MonitoLib\Response::getInstance();
                 $buffer = $response->__toString();
                 if ($buffer === '') {
                     http_response_code(204);
@@ -217,5 +221,9 @@ class App
         }
 
         self::$debug = $debug;
+    }
+    public static function today ()
+    {
+        return date('Y-m-d');
     }
 }

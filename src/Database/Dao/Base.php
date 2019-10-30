@@ -7,8 +7,11 @@ use \MonitoLib\Functions;
 
 class Base extends Query
 {
-    const VERSION = '1.1.0';
+    const VERSION = '1.1.1';
     /**
+    * 1.1.1 - 2019-08-11
+    * fix: minor fixes
+    *
     * 1.1.0 - 2019-05-02
     * new: removed parent::__constructor call
     *
@@ -113,9 +116,9 @@ class Base extends Query
                 if ($field['type'] === 'int' || $field['type'] === 'double') {
                     $v = +$v;
                 }
-
-                $dto->$set($v);
             }
+
+            $dto->$set($v);
         }
 
         return $dto;

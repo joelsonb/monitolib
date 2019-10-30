@@ -8,8 +8,12 @@ use \MonitoLib\Functions;
 
 class Oracle extends Base implements \MonitoLib\Database\Dao
 {
-    const VERSION = '1.0.3';
+    const VERSION = '1.1.0';
     /**
+    * 1.1.0 - 2019-10-29
+    * new: list() now paginates
+    * fix: minor fixes
+    *
     * 1.0.3 - 2019-05-05
     * fix: date format on update
     *
@@ -23,7 +27,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     * first versioned
     */
     protected $dbms = 2;
-    private $lastId;
+    protected $lastId;
     private $numRows = 0;
 
     public function count ()
@@ -102,12 +106,12 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         $this->reset();
 
         if (oci_num_rows($stt) === 0) {
-            throw new BadRequest('Não foi possível atualizar!');
+            throw new BadRequest('Não foi possível deletar!');
         }
     }
-    public function get ()
+    public function get ($sql = null)
     {
-        $res = $this->list();
+        $res = $this->list($sql);
         return isset($res[0]) ? $res[0] : null;
     }
     public function getById (...$params)
@@ -188,6 +192,15 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     {
         if (is_null($sql)) {
             $sql = $this->renderSelectSql();
+        }
+
+        $page    = $this->getPage();
+        $perPage = $this->getPerPage();
+
+        if ($perPage > 0) {
+            $startRow = (($page - 1) * $perPage) + 1;
+            $endRow   = $perPage * $page;
+            $sql      = "SELECT {$this->getSelectFields(false)} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sql) a) WHERE rown_ BETWEEN $startRow AND $endRow";
         }
 
         $stt = $this->connection->parse($sql);

@@ -7,8 +7,11 @@ use \MonitoLib\Validator;
 
 class Query
 {
-    const VERSION = '1.1.3';
+    const VERSION = '1.2.0';
     /**
+    * 1.2.0 - 2019-10-23
+    * fix: several fixes
+    *
     * 1.1.3 - 2019-06-05
     * fix: removed checkIfFieldExists from setQuery
     *
@@ -160,9 +163,9 @@ class Query
 
     private function addCriteriaParser ($logicalOperator, $comparisonOperator, $field, $value, $modifiers = 0)
     {
-        $field = $this->checkIfFieldExists($field);
-        $type = $field['type'];
-        $name = $field['name'];
+        $f = $this->checkIfFieldExists($field, $modifiers);
+        $type = $f['type'];
+        $name = $f['name'];
 
         $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
         $null  = ($modifiers & self::CHECK_NULL) === self::CHECK_NULL;
@@ -271,6 +274,7 @@ class Query
     {
         $f = $this->checkIfFieldExists($field);
         $type = $f['type'];
+        $format = $f['format'];
 
         switch ($type) {
             case 'date':
@@ -317,7 +321,7 @@ class Query
 
                         $f = 'YYYY-MM-DD HH24:MI:SS';
 
-                        if ($this->fields[$field]['format'] === 'Y-m-d H:i:s' && Validator::date($v, 'Y-m-d')) {
+                        if ($format === 'Y-m-d H:i:s' && Validator::date($v, 'Y-m-d')) {
                             $field = "TRUNC($field)";
                         }
 
@@ -334,52 +338,57 @@ class Query
                 break;
             case 'string':
             default:
-                $m = 'andEqual';
-                $s = urldecode($value);
-                $a = '';
-                $b = '';
-
-                if (substr($s, 0, 1) === '%') {
-                    $a = '%';
-                    $m = 'andLike';
-                }
-
-                if (substr($s, -1) === '%') {
-                    $b = '%';
-                    $m = 'andLike';
-                }
-
-                $f = substr($s, 0, 1);
-                $l = substr($s, -1);
-
-                if ($f === '"' && $l === '"') {
-                    $s = substr($s, 1, -1);
-                }
-
-                if ($f === '!') {
-                    $m = 'andNotLike';
-                    $s = substr($s, 1);
-                    $f = substr($s, 0, 1);
-                }
-
-                if ($f === '%') {
-                    $f = substr($s, 0, 1);
+                if (preg_match('/^\[.*\]$/', $value, $m)) {
+                    $this->andIn($field, explode(',', substr($m[0], 1, -1)));
                 } else {
+
+                    $m = 'andEqual';
+                    $s = urldecode($value);
                     $a = '';
-                }
-
-                if ($l === '%') {
-                    $s = substr($s, 0, -1);
-                } else {
                     $b = '';
-                }
 
-                $this->$m($field, "{$a}{$s}{$b}");
+                    if (substr($s, 0, 1) === '%') {
+                        $a = '%';
+                        $m = 'andLike';
+                    }
+
+                    if (substr($s, -1) === '%') {
+                        $b = '%';
+                        $m = 'andLike';
+                    }
+
+                    $f = substr($s, 0, 1);
+                    $l = substr($s, -1);
+
+                    if ($f === '"' && $l === '"') {
+                        $s = substr($s, 1, -1);
+                    }
+
+                    if ($f === '!') {
+                        $m = 'andNotLike';
+                        $s = substr($s, 1);
+                        $f = substr($s, 0, 1);
+                    }
+
+                    if ($f === '%') {
+                        $f = substr($s, 0, 1);
+                    } else {
+                        $a = '';
+                    }
+
+                    if ($l === '%') {
+                        $s = substr($s, 0, -1);
+                    } else {
+                        $b = '';
+                    }
+
+                    $this->$m($field, "{$a}{$s}{$b}");
+                }
         }
 
         return $this;
     }
-    private function checkIfFieldExists ($field)
+    private function checkIfFieldExists ($field, $modifiers = 0)
     {
         $field = trim(urldecode($field));
 
@@ -387,11 +396,20 @@ class Query
             $this->modelFields = $this->getModel()->getFields();
         }
 
+        if (($modifiers & self::RAW_QUERY) === self::RAW_QUERY) {
+            return $field = [
+                'name' => $field,
+                'type' => ''
+            ];
+        }
+
         if (isset($this->modelFields[$field])) {
             return $this->modelFields[$field];
         }
 
-        throw new BadRequest('O campo {' . $field . '} não existe no modelo ' . get_class($this->getModel()) . '!');
+        if (($modifiers & self::RAW_QUERY) !== self::RAW_QUERY) {
+            throw new BadRequest('O campo {' . $field . '} não existe no modelo ' . get_class($this->getModel()) . '!');
+        }
     }
     public function orderBy ($field, $direction = 'ASC')
     {

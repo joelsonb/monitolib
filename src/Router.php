@@ -12,8 +12,11 @@ use \MonitoLib\Functions;
 
 class Router
 {
-    const VERSION = '1.0.1';
+    const VERSION = '1.0.2';
     /**
+    * 1.0.1 - 2019-09-20
+    * fix: minor fixes
+    *
     * 1.0.1 - 2019-05-02
     * fix: checks OPTIONS request method on check function
     *
@@ -85,7 +88,8 @@ class Router
     }
     static public function check ($request)
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        // \MonitoLib\Dev::pre($request);
+        if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             return;
         }
 
@@ -185,7 +189,7 @@ class Router
                             throw new NotFound('Método do controller não encontrado!');
                         }
                     } else {
-                        throw new NotFound('Controller não encontrado!');
+                        throw new NotFound("Controller $class não encontrado!");
                     }
                 } else {
                     throw new NotFound('Ação não encontrada!');

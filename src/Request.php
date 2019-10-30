@@ -7,8 +7,14 @@ namespace MonitoLib;
 
 class Request
 {
-    const VERSION = '2.0.1';
+    const VERSION = '2.0.3';
     /**
+    * 2.0.3 - 2019-10-29
+    * new: property/method asDataset
+    *
+    * 2.0.2 - 2019-09-21
+    * fix: starting $params as array
+    *
     * 2.0.1 - 2019-06-05
     * fix: getPage and getPerPage to return only valid numbers
     *
@@ -25,8 +31,9 @@ class Request
     private $queryString = [];
     private $requestUri;
     private $post;
-    private $params;
+    private $params = [];
 
+    private $asDataset = false;
     private $fields;
     private $orderBy;
     private $page;
@@ -44,6 +51,10 @@ class Request
         }
 
         return self::$instance;
+    }
+    public function asDataset ()
+    {
+        return $this->asDataset;
     }
     public function getFields ()
     {
@@ -110,10 +121,10 @@ class Request
     public function getQueryString ($key = null)
     {
         if (is_null($key)) {
-            return $this->queryString;
+            return $this->query;
         } else {
-            if (isset($this->queryString[$key])) {
-                return $this->queryString[$key];
+            if (isset($this->query[$key])) {
+                return $this->query[$key];
             } else {
                 return null;
             }
@@ -132,16 +143,20 @@ class Request
             $f = substr($field, 0, $p);
             $v = substr($field, $p + 1);
 
-            if (strcasecmp($f, 'fields') === 0) {
-                $this->queryString['fields'] = $v;
-            } elseif (strcasecmp($f, 'page') === 0) {
-                $this->page = $v;
-            } elseif (strcasecmp($f, 'perpage') === 0) {
-                $this->perPage = $v;
-            } elseif (strcasecmp($f, 'orderby') === 0) {
-                $this->queryString['orderBy'][] = $v;
+            if (!$p && $field === 'ds') {
+                $this->asDataset = true;
             } else {
-                $this->query[] = [$f => $v];
+                if (strcasecmp($f, 'fields') === 0) {
+                    $this->queryString['fields'] = $v;
+                } elseif (strcasecmp($f, 'page') === 0) {
+                    $this->page = $v;
+                } elseif (strcasecmp($f, 'perpage') === 0) {
+                    $this->perPage = $v;
+                } elseif (strcasecmp($f, 'orderby') === 0) {
+                    $this->queryString['orderBy'][] = $v;
+                } else {
+                    $this->query[] = [$f => $v];
+                }
             }
         }
     }

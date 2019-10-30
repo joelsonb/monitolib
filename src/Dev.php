@@ -12,8 +12,11 @@ namespace MonitoLib;
 
 class Dev
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
     /**
+    * 1.0.1 - 2019-08-11
+    * fix: vd => $index = 1
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */
@@ -84,7 +87,7 @@ class Dev
 
 	    return $array;
 	}
-	public static function vd ($a, $depth = 0, $e = false, $index = 0)
+	public static function vd ($a, $depth = 0, $e = false, $index = 1)
 	{
 		self::db($index);
 
