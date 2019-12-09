@@ -8,8 +8,11 @@ use \MonitoLib\Functions;
 
 class Oracle extends Base implements \MonitoLib\Database\Dao
 {
-    const VERSION = '1.1.0';
+    const VERSION = '1.1.1';
     /**
+    * 1.1.1 - 2019-12-09
+    * fix: minor fixes
+    *
     * 1.1.0 - 2019-10-29
     * new: list() now paginates
     * fix: minor fixes
@@ -112,6 +115,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     public function get ($sql = null)
     {
         $res = $this->list($sql);
+        $this->reset();
         return isset($res[0]) ? $res[0] : null;
     }
     public function getById (...$params)

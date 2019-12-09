@@ -7,8 +7,12 @@ use \MonitoLib\Validator;
 
 class Query
 {
-    const VERSION = '1.2.0';
+    const VERSION = '1.3.0';
     /**
+    * 1.3.0 - 2019-12-09
+    * new: andNotIn
+    * fix: several fixes
+    *
     * 1.2.0 - 2019-10-23
     * fix: several fixes
     *
@@ -92,6 +96,40 @@ class Query
 
         return $this;
     }
+    public function andNotIn ($field, $values, $modifiers = 0)
+    {
+        $field = $this->checkIfFieldExists($field);
+
+        if (empty($values)) {
+            throw new BadRequest('Valores inválidos!');
+        }
+
+        $value = '';
+
+        foreach ($values as $v) {
+            if (is_numeric($v)) {
+                $value .= $v;
+            } else {
+                $value .= "'" . $this->escape($v) . "'";
+            }
+
+            $value .= ',';
+        }
+
+        $value = substr($value, 0, -1);
+
+        $sql = "{$field['name']} NOT IN ($value) AND ";
+
+        $this->criteria .= $sql;
+
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
+
+        if ($fixed) {
+            $this->fixedCriteria .= $sql;
+        }
+
+        return $this;
+    }
     public function startGroup ($modifiers = 0)
     {
         $sql = '(';
@@ -164,8 +202,8 @@ class Query
     private function addCriteriaParser ($logicalOperator, $comparisonOperator, $field, $value, $modifiers = 0)
     {
         $f = $this->checkIfFieldExists($field, $modifiers);
-        $type = $f['type'];
-        $name = $f['name'];
+        $type   = $f['type'];
+        $name   = $f['name'];
 
         $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
         $null  = ($modifiers & self::CHECK_NULL) === self::CHECK_NULL;
@@ -173,6 +211,23 @@ class Query
 
         if (is_null($value) && $null) {
             return $this->andIsNull($field, $fixed);
+        }
+
+        if ($this->dbms === 2 && $type === 'date') {
+            $format = $f['format'];
+
+            if (!Validator::date($value, 'Y-m-d') && !Validator::date($value, 'Y-m-d H:i:s')) {
+                throw new BadRequest('Data inválida: ' . $value);
+            }
+
+            $f = 'YYYY-MM-DD HH24:MI:SS';
+
+            if ($format === 'Y-m-d H:i:s' && Validator::date($value, 'Y-m-d')) {
+                $name = "TRUNC($field)";
+            }
+
+            $value = "TO_DATE('$value', '$f')";
+            $raw = true;
         }
 
         if ($raw || $type === 'int') {
@@ -331,8 +386,12 @@ class Query
 
                     $this->$method($field, $m[2]);
                     break;
+                } elseif ($value === "\x00") {
+                    $this->andIsNull($field);
+                } elseif ($value === "!\x00") {
+                    $this->andIsNotNull($field);
                 } else {
-                    throw new BadRequest('Valor inválido!');
+                    throw new BadRequest("Valor inválido: $value!");
                 }
 
                 break;
@@ -411,9 +470,9 @@ class Query
             throw new BadRequest('O campo {' . $field . '} não existe no modelo ' . get_class($this->getModel()) . '!');
         }
     }
-    public function orderBy ($field, $direction = 'ASC')
+    public function orderBy ($field, $direction = 'ASC', $modifiers = 0)
     {
-        $this->checkIfFieldExists($field);
+        $this->checkIfFieldExists($field, $modifiers);
 
         $this->orderBy[$field] = strtoupper($direction);
         return $this;

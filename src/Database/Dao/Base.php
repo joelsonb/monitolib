@@ -7,8 +7,12 @@ use \MonitoLib\Functions;
 
 class Base extends Query
 {
-    const VERSION = '1.1.1';
+    const VERSION = '1.1.2';
     /**
+    * 1.1.2 - 2019-12-09
+    * new: beginConnection(), commit() and rollback()
+    * fix: getValue(): check if int values is null before set value
+    *
     * 1.1.1 - 2019-08-11
     * fix: minor fixes
     *
@@ -40,6 +44,10 @@ class Base extends Query
         if (class_exists($model)) {
             $this->model = new $model;
         }
+    }
+    public function beginTransaction ()
+    {
+        $this->connection->beginTransaction();
     }
     public function checkUnique ($uniqueConstraints, $dto)
     {
@@ -73,6 +81,10 @@ class Base extends Query
                 throw new BadRequest('Ocorreu um erro na persistência dos dados!', $errors);
             }
         }
+    }
+    public function commit ()
+    {
+        $this->connection->commit();
     }
     public function createDto ($result)
     {
@@ -114,7 +126,9 @@ class Base extends Query
                 $field = $fields[$f];
 
                 if ($field['type'] === 'int' || $field['type'] === 'double') {
-                    $v = +$v;
+                    if (!is_null($v)) {
+                        $v = +$v;
+                    }
                 }
             }
 
@@ -152,6 +166,10 @@ class Base extends Query
                 $this->andEqual($keys[0], $params[0]);
             }
         }
+    }
+    public function rollback ()
+    {
+        $this->connection->rollback();
     }
     protected function setAutoValues ($dto)
     {

@@ -7,8 +7,11 @@ namespace MonitoLib;
 
 class Request
 {
-    const VERSION = '2.0.3';
+    const VERSION = '2.1.0';
     /**
+    * 2.0.3 - 2019-12-09
+    * new: nullIt() and $emptyAsNull on getJson()
+    *
     * 2.0.3 - 2019-10-29
     * new: property/method asDataset
     *
@@ -66,9 +69,18 @@ class Request
 
         return $this->fields;
     }
-    public function getJson ($asArray = false)
+    public function getJson ($emptyAsNull = false, $asArray = false)
     {
         $this->json = json_decode(file_get_contents('php://input'), $asArray);
+
+        if (!$this->json instanceof \StdClass) {
+            return new \StdClass;
+        }
+
+        if ($emptyAsNull) {
+            return $this->nullIt($this->json);
+        }
+
         return $this->json;
     }
     public function getOrderBy ()
@@ -133,6 +145,18 @@ class Request
     public function getRequestUri ()
     {
         return $this->requestUri;
+    }
+    private function nullIt ($json)
+    {
+        if ($json instanceof \StdClass) {
+            foreach ($json as $k => $v) {
+                if ($v === '') {
+                    $json->$k = null;
+                }
+            }
+        }
+
+        return $json;
     }
     public function setQueryString ($queryString)
     {
