@@ -32,7 +32,6 @@ class Mcl
     public function run()
     {
         // \MonitoLib\Dev::pre($this->module);
-
         $request = $this->parse();
         $module  = $request->getModule();
         $command = $request->getCommand();
@@ -54,68 +53,86 @@ class Mcl
         // Configura o módulo
         $this->module->setup();
 
-        // Verifica os parâmetros
-        $command = $this->module->getCommand($command);
-        $params  = $command->getParams();
+        // \MonitoLib\Dev::pre($this->module);
 
-        if (!empty($params)) {
-            $i = 0;
+        // \MonitoLib\Dev::pre($command);
 
-            // \MonitoLib\Dev::pre($request);
+        if (!is_null($command)) {
+            $command = $this->module->getCommand($command);
+            // Verifica os parâmetros
+            $params  = $command->getParams();
 
-            foreach ($params as $param) {
-                $value = $request->getParams()[$i] ?? null;
-                $name = $param->getName();
+            if (!empty($params)) {
+                $i = 0;
 
-                // \MonitoLib\Dev::pre($value);
+                // \MonitoLib\Dev::pre($request);
 
-                if ($param->getRequired() && is_null($value)) {
-                    throw new BadRequest("O parâmetro $name é obrigatório!");
+                foreach ($params as $param) {
+                    $value = $request->getParams()[$i] ?? null;
+                    $name = $param->getName();
+
+                    // \MonitoLib\Dev::pre($value);
+
+                    if ($param->getRequired() && is_null($value)) {
+                        throw new BadRequest("O parâmetro $name é obrigatório!");
+                    }
+
+                    $param->setValue($value);
+
+
+
+                    $i++;
                 }
-
-                $param->setValue($value);
-
-
-
-                $i++;
             }
+
+            // Verifica as opções e argumentos
+            $options = $command->getOptions();
+
+            if (!empty($options)) {
+                foreach ($options as $option) {
+                    $alias = $option->getAlias();
+                    $name  = $option->getName();
+                    // $value = $request->getParams()[$i] ?? null;
+
+                    $value = $request->getOption($name) ?? $request->getOption($alias);
+
+                    // \MonitoLib\Dev::vde($value);
+
+                    if ($option->getRequired() && is_null($value)) {
+                        throw new BadRequest("A opção $name é obrigatória!");
+                    }
+
+                    $option->setValue($value);
+                }
+            }
+
+            $request = \MonitoLib\Mcl\Request::getInstance();
+            $request->setModule($module)
+                ->setCommand($command)
+                ->setParams($params)
+                ->setOptions($options);
+
+            // Executa o comando
+            $className = $command->getClass();
+            $method    = $command->getMethod();
+
+            $class = new $className();
+            $class->$method();
         }
 
-        // Verifica as opções e argumentos
-        $options = $command->getOptions();
 
-        if (!empty($options)) {
-            foreach ($options as $option) {
-                $alias = $option->getAlias();
-                $name  = $option->getName();
-                // $value = $request->getParams()[$i] ?? null;
 
-                $value = $request->getOption($name) ?? $request->getOption($alias);
 
-                // \MonitoLib\Dev::vde($value);
 
-                if ($option->getRequired() && is_null($value)) {
-                    throw new BadRequest("A opção $name é obrigatória!");
-                }
+        // php mcl
+        // php mcl lib
+        // php mcl lib:install
 
-                $option->setValue($value);
-            }
-        }
 
-        $request = \MonitoLib\Mcl\Request::getInstance();
-        $request->setModule($module)
-            ->setCommand($command)
-            ->setParams($params)
-            ->setOptions($options);
+
 
         // \MonitoLib\Dev::pre($request);
 
-        // Executa o comando
-        $className = $command->getClass();
-        $method    = $command->getMethod();
-
-        $class = new $className();
-        $class->$method();
 
         // \MonitoLib\Dev::pre($command->getOptions());
 
@@ -133,7 +150,11 @@ class Mcl
         }
 
         if ($request->getOption('version')) {
-            $this->showVersion();
+            if (is_null($command)) {
+                $this->module->showVersion();
+            } else {
+                $this->showVersion();
+            }
         }
     }
     private function loadMcl()
@@ -268,7 +289,7 @@ class Mcl
     }
     private function showVersion()
     {
-        echo 'Monito Command Line v' . $this->VERSION . "\n";
+        echo 'Monito Command Line v' . self::VERSION . "\n";
         exit;
     }
     /**

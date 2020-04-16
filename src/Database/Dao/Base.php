@@ -30,7 +30,7 @@ class Base extends Query
     public function __construct()
     {
         $classParts = explode('\\', get_class($this));
-        $namespace  = join(array_slice($classParts, 0, -2), '\\') . '\\';
+        $namespace  = join('\\', array_slice($classParts, 0, -2)) . '\\';
         $className  = end($classParts);
         $dto        = $namespace . 'dto\\' . $className;
         $model      = $namespace . 'model\\' . $className;
@@ -92,7 +92,7 @@ class Base extends Query
             $dtoName = $this->getDtoName();
             $dto     = new $dtoName;
         } else {
-            $dto = \MonitoLib\Database\Dto::get($result);
+            $dto = \MonitoLib\Database\Dto::get($result, $this->convertName);
         }
 
         return $dto;
@@ -105,7 +105,7 @@ class Base extends Query
     public function getDtoName()
     {
         if (is_null($this->dtoName)) {
-            throw new InternalError('Objeto DTO não informado!');
+            throw new InternalError('Objeto Dto não informado!');
         }
 
         return $this->dtoName;
@@ -124,7 +124,7 @@ class Base extends Query
         $fields = $this->getModelFields();
 
         foreach ($result as $f => $v) {
-            $f   = Functions::toLowerCamelCase($f);
+            $f   = $this->convertName ? Functions::toLowerCamelCase($f) : mb_strtolower($f);
             $set = 'set' . ucfirst($f);
 
             if (isset($fields[$f])) {

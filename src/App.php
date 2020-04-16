@@ -157,7 +157,9 @@ class App
             }
 
             // Requires an app init file, if exists
-            require self::getConfigPath() . 'init.php';
+            if (file_exists($init = self::getConfigPath() . 'init.php')) {
+                require $init;
+            }
 
             $return = [];
 
@@ -230,8 +232,15 @@ class App
     }
     public static function setDebug ($debug)
     {
+
         if (!is_integer($debug) || $debug < 0 || $debug > 2) {
             throw new InternalError('O nível de debug deve ser 0, 1 ou 2!');
+        }
+
+        if ($debug > 0) {
+            error_reporting(E_ALL);
+        } else {
+            error_reporting(0);
         }
 
         self::$debug = $debug;

@@ -43,7 +43,7 @@ class Model
 
     public function getUniqueConstraints ()
     {
-        return $this->constraints['unique'];
+        return $this->constraints['unique'] ?? null;
     }
     public function getField ($field)
     {

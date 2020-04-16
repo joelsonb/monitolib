@@ -33,15 +33,18 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     protected $lastId;
     private $numRows = 0;
 
+    private $executeMode;
+
 
 
     public function beginTransaction()
     {
-        $this->getConnection()->beginTransaction();
+        $this->executeMode = OCI_NO_AUTO_COMMIT;
     }
     public function commit()
     {
-        $this->getConnection()->commit();
+        @oci_commit($this->getConnection());
+        $this->executeMode = OCI_COMMIT_ON_SUCCESS;
     }
     public function execute($stt)
     {
@@ -60,7 +63,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     }
     public function fetchArrayNum($stt)
     {
-        return $stt->fetch(\PDO::FETCH_NUM);
+        return oci_fetch_array($stt, OCI_NUM | OCI_RETURN_NULLS);
     }
     public function parse($sql)
     {
@@ -75,7 +78,8 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     }
     public function rollback()
     {
-        $this->getConnection()->rollback();
+        @oci_rollback($this->getConnection());
+        $this->executeMode = OCI_COMMIT_ON_SUCCESS;
     }
 
 
@@ -88,8 +92,8 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     public function count()
     {
         $sql = $this->renderCountSql();
-        $stt = $this->connection->parse($sql);
-        $this->connection->execute($stt);
+        $stt = $this->parse($sql);
+        $this->execute($stt);
         $res = oci_fetch_row($stt);
 
         // Reset filter
@@ -232,7 +236,11 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         $val = substr($val, 0, -1);
 
         $sql = 'INSERT INTO ' . $this->model->getTableName() . " ($fld) VALUES ($val)";
-        $stt = $this->connection->parse($sql);
+
+        // \MonitoLib\Dev::pr($dto);
+        // \MonitoLib\Dev::ee($sql);
+
+        $stt = $this->parse($sql);
 
         foreach ($this->model->getFieldsInsert() as $f) {
             $var  = Functions::toLowerCamelCase($f['name']);
@@ -242,7 +250,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
             @oci_bind_by_name($stt, ':' . $f['name'], $$var);
         }
 
-        $this->connection->execute($stt);
+        $this->execute($stt);
     }
     public function list($sql = null)
     {
@@ -284,9 +292,9 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     {
         $nvl = $nextValue ? 1 : 0;
         $sql = "SELECT NVL($param, $nvl) FROM {$tableName} FOR UPDATE";
-        $stt = $this->connection->parse($sql);
-        $this->connection->execute($stt);
-        $res = $this->connection->fetchArrayNum($stt);
+        $stt = $this->parse($sql);
+        $this->execute($stt);
+        $res = $this->fetchArrayNum($stt);
 
         $value = $res[0];
         $newValue = $value;
@@ -298,8 +306,8 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         $newValue++;
 
         $sql = "UPDATE $tableName SET $param = $newValue";
-        $stt = $this->connection->parse($sql);
-        $this->connection->execute($stt);
+        $stt = $this->parse($sql);
+        $this->execute($stt);
 
         return $value;
     }

@@ -32,9 +32,9 @@ class Controller
 		$this->request  = \MonitoLib\Request::getInstance();
 		$this->response = \MonitoLib\Response::getInstance();
 
-		$classParts  = explode('\\', get_class($this));
-		$namespace   = join(array_slice($classParts, 0, -2), '\\') . '\\';
-		$className   = end($classParts);
+		$classParts      = explode('\\', get_class($this));
+		$namespace       = join('\\', array_slice($classParts, 0, -2)) . '\\';
+		$className       = end($classParts);
 		$this->daoName   = $namespace . 'Dao\\' . $className;
 		$this->dtoName   = $namespace . 'Dto\\' . $className;
 		$this->modelName = $namespace . 'Model\\' . $className;
@@ -52,8 +52,8 @@ class Controller
 		}
 
 		foreach ($json as $j) {
-		    $dao = new $this->dao;
-		    $dto = $this->jsonToDto(new $this->dto, $j);
+		    $dao = new $this->daoName;
+		    $dto = $this->jsonToDto(new $this->dtoName, $j);
 		    $dao->insert($dto);
 		}
 

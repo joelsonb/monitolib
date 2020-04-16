@@ -133,6 +133,10 @@ class Router
 
         // \MonitoLib\Dev::ee($file);
 
+        if (!file_exists($file)) {
+            throw new InternalError("O arquivo de rotas $file não existe!");
+        }
+
         require_once $file;
 
         // Verifica se existe arquivo de rota específico

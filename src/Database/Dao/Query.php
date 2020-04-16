@@ -53,6 +53,9 @@ class Query
     private $sql;
     private $sqlCount;
 
+    private $map = [];
+    protected $convertName = true;
+
     private $selectSql;
     private $selectSqlReady = false;
     private $countSql;
@@ -586,10 +589,13 @@ class Query
 
         foreach ($selected as $k => $v) {
             $field = $v['name'];
+            $alias = $this->map[$k] ?? null;
 
             if ($format && $v['type'] === 'date' && $this->dbms === 2) {
                 $mask  = 'YYYY-MM-DD' . ($v['format'] === 'Y-m-d H:i:s' ? ' HH24:MI:SS' : '');
-                $field = "TO_CHAR($field, '$mask') AS $field";
+                $field = "TO_CHAR($field, '$mask') AS " . ($alias ?? $field);
+            } else {
+                $field .= is_null($alias) ? '' : " AS $alias";
             }
 
             $list .= "$field, ";
@@ -655,6 +661,12 @@ class Query
     public function setDbms ($dbms)
     {
         $this->dbms = $dbms;
+    }
+    public function setMap ($map, $convertName = true)
+    {
+        $this->map = $map;
+        $this->convertName = $convertName;
+        return $this;
     }
     public function setFields ($fields) {
         if (is_null($fields)) {
