@@ -283,9 +283,9 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     public function nextValue($sequence)
     {
         $sql = "SELECT $sequence.nextval FROM dual";
-        $stt = $this->connection->parse($sql);
-        $this->connection->execute($stt);
-        $res = $this->connection->fetchArrayNum($stt);
+        $stt = $this->parse($sql);
+        $this->execute($stt);
+        $res = $this->fetchArrayNum($stt);
         return $res[0];
     }
     public function paramValue($tableName, $param, $nextValue = true)
@@ -313,7 +313,15 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     }
     public function procedure($name, ...$params)
     {
+        $params = array_map(function($item){
+            return is_null($item) ? 'NULL' : (is_numeric($item) ? $item : "'$item'");
+        }, $params);
 
+        $params = implode(',', $params);
+
+        $sql = "BEGIN $name($params);END;";
+        $stt = $this->parse($sql);
+        $this->execute($stt);
     }
     public function update($dto)
     {

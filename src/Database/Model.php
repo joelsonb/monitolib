@@ -1,6 +1,7 @@
 <?php
 namespace MonitoLib\Database;
 
+use \MonitoLib\Exception\InvalidModel;
 use \MonitoLib\Exception\BadRequest;
 use \MonitoLib\Functions;
 use \MonitoLib\Validator;
@@ -227,7 +228,7 @@ class Model
         }
 
         if (!empty($errors)) {
-            throw new BadRequest('Não foi possível validar os dados do model ' . get_class($this) . '!', $errors);
+            throw new InvalidModel('Não foi possível validar os dados do model ' . get_class($this) . '!', $errors);
         }
     }
 }

@@ -638,6 +638,8 @@ class Query
             $sql = 'SELECT ' . $this->getSelectFields() . ' FROM ' . $this->model->getTableName() . $this->getWhereSql() . $this->getOrderBySql() . $this->getLimitSql();
         }
 
+        $this->reset();
+
         return $sql;
     }
     public function reset ()

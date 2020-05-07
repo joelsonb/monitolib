@@ -189,35 +189,40 @@ class Base extends Query
             $sourceParts = explode('.', $source);
             $sourceType  = $sourceParts[0];
             $get         = 'get' . ucfirst($fn);
+            $set         = 'set' . ucfirst($fn);
+            $value       = $dto->$get();
 
-            if (is_null($dto->$get()) && in_array($sourceType, ['MAX','PARAM','SEQUENCE','TABLE'])) {
-                $set      = 'set' . ucfirst($fn);
-                $value    = $dto->$get();
-                $primary  = $f['primary'];
-                $auto     = $f['auto'];
+            if (is_null($value)) {
+                if (in_array($sourceType, ['MAX','PARAM','SEQUENCE','TABLE'])) {
+                    $value   = $dto->$get();
+                    $primary = $f['primary'];
+                    $auto    = $f['auto'];
 
-                $sourceValue = isset($sourceParts[1]) ? $sourceParts[1] : null;
+                    $sourceValue = isset($sourceParts[1]) ? $sourceParts[1] : null;
 
-                switch ($sourceType) {
-                    case 'MAX':
-                        $value = $this->max($f['name']) + 1;
-                        break;
-                    case 'PARAM':
-                    case 'TABLE':
-                        $sourceParts = explode('/', $sourceValue);
-                        $value = $this->paramValue($sourceParts[0], $sourceParts[1]);
-                        break;
-                    case 'SEQUENCE':
-                        $value = $this->nextValue($sourceValue);
-                        break;
-                    default:
-                        throw new InternalError('Origem de valor inválida!');
+                    switch ($sourceType) {
+                        case 'MAX':
+                            $value = $this->max($f['name']) + 1;
+                            break;
+                        case 'PARAM':
+                        case 'TABLE':
+                            $sourceParts = explode('/', $sourceValue);
+                            $value = $this->paramValue($sourceParts[0], $sourceParts[1]);
+                            break;
+                        case 'SEQUENCE':
+                            $value = $this->nextValue($sourceValue);
+                            break;
+                        default:
+                            throw new InternalError('Origem de valor inválida!');
+                    }
+
+                    if ($primary) {
+                        $this->lastId = $value;
+                    }
+                } elseif (!is_null($f['default'])) {
+                    $value = $f['default'];
                 }
-
-                if ($primary) {
-                    $this->lastId = $value;
-                }               
-
+                
                 $dto->$set($value);
             }
         }
