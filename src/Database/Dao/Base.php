@@ -32,8 +32,8 @@ class Base extends Query
         $classParts = explode('\\', get_class($this));
         $namespace  = join('\\', array_slice($classParts, 0, -2)) . '\\';
         $className  = end($classParts);
-        $dto        = $namespace . 'dto\\' . $className;
-        $model      = $namespace . 'model\\' . $className;
+        $dto        = $namespace . 'Dto\\' . $className;
+        $model      = $namespace . 'Model\\' . $className;
 
         if (class_exists($dto)) {
             $this->dtoName = $dto;
@@ -112,6 +112,10 @@ class Base extends Query
     }
     public function getModel()
     {
+        // $db = debug_backtrace();
+
+        // \MonitoLib\Dev::pr($db);
+
         if (is_null($this->model)) {
             throw new InternalError('Objeto Model nulo!');
         }
