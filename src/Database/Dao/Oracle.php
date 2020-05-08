@@ -157,9 +157,30 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
             throw new BadRequest('Não é possível deletar dados de uma view!');
         }
 
+        if (empty($params)) {
+            throw new BadRequest('Não foram informados parâmetros para deletar!');
+        }
+        
+        $keys = $this->model->getPrimaryKeys();
+
+        if (count($params) !== count($keys)) {
+            throw new BadRequest('Invalid parameters number!');
+        }
+
+        foreach ($params as $p) {
+            foreach ($keys as $k) {
+                $this->andEqual($k, $p);
+            }
+        }
+
         $sql = $this->renderDeleteSql();
-        $stt = $this->connection->parse($sql);
-        $this->connection->execute($stt);
+
+
+        // \MonitoLib\Dev::ee($sql);
+
+
+        $stt = $this->parse($sql);
+        $this->execute($stt);
 
         // Reset filter
         $this->reset();
