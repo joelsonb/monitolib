@@ -99,6 +99,40 @@ class Query
 
         return $this;
     }
+    public function orIn ($field, $values, $modifiers = 0)
+    {
+        $field = $this->checkIfFieldExists($field);
+
+        if (empty($values)) {
+            throw new BadRequest('Valores inválidos!');
+        }
+
+        $value = '';
+
+        foreach ($values as $v) {
+            if (is_numeric($v)) {
+                $value .= $v;
+            } else {
+                $value .= "'" . $this->escape($v) . "'";
+            }
+
+            $value .= ',';
+        }
+
+        $value = substr($value, 0, -1);
+
+        $sql = "{$field['name']} IN ($value) OR ";
+
+        $this->criteria .= $sql;
+
+        $fixed = ($modifiers & self::FIXED_QUERY) === self::FIXED_QUERY;
+
+        if ($fixed) {
+            $this->fixedCriteria .= $sql;
+        }
+
+        return $this;
+    }
     public function andNotIn ($field, $values, $modifiers = 0)
     {
         $field = $this->checkIfFieldExists($field);
@@ -578,7 +612,7 @@ class Query
     {
         return $this->perPage;
     }
-    protected function getSelectFields ($format = true)
+    protected function getSelectFields ($format = true, $aliases = false)
     {
         $list     = '';
         $selected = $this->selectedFields;
@@ -588,14 +622,18 @@ class Query
         }
 
         foreach ($selected as $k => $v) {
-            $field = $v['name'];
             $alias = $this->map[$k] ?? null;
+            $field = $v['name'];
 
             if ($format && $v['type'] === 'date' && $this->dbms === 2) {
                 $mask  = 'YYYY-MM-DD' . ($v['format'] === 'Y-m-d H:i:s' ? ' HH24:MI:SS' : '');
                 $field = "TO_CHAR($field, '$mask') AS " . ($alias ?? $field);
             } else {
-                $field .= is_null($alias) ? '' : " AS $alias";
+                if ($aliases && !is_null($alias)) {
+                    $field = $alias;
+                } else {
+                    $field .= is_null($alias) ? '' : " AS $alias";
+                }
             }
 
             $list .= "$field, ";
@@ -721,6 +759,7 @@ class Query
         }
 
         $this->page = $page;
+
         return $this;
     }
     public function setPerPage ($perPage)

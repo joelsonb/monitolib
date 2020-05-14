@@ -259,7 +259,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         $sql = 'INSERT INTO ' . $this->model->getTableName() . " ($fld) VALUES ($val)";
 
         // \MonitoLib\Dev::pr($dto);
-        // \MonitoLib\Dev::ee($sql);
+        // \MonitoLib\Dev::e("$sql\n");
 
         $stt = $this->parse($sql);
 
@@ -271,7 +271,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
             @oci_bind_by_name($stt, ':' . $f['name'], $$var);
         }
 
-        $this->execute($stt);
+        $stt = $this->execute($stt);
     }
     public function list($sql = null)
     {
@@ -285,8 +285,10 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         if ($perPage > 0) {
             $startRow = (($page - 1) * $perPage) + 1;
             $endRow   = $perPage * $page;
-            $sql      = "SELECT {$this->getSelectFields(false)} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sql) a) WHERE rown_ BETWEEN $startRow AND $endRow";
+            $sql      = "SELECT {$this->getSelectFields(false, true)} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sql) a) WHERE rown_ BETWEEN $startRow AND $endRow";
         }
+
+        // \MonitoLib\Dev::e("$sql\n");
 
         $stt = $this->parse($sql);
         $this->execute($stt);
