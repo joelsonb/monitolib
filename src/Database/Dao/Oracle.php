@@ -8,8 +8,11 @@ use \MonitoLib\Functions;
 
 class Oracle extends Base implements \MonitoLib\Database\Dao
 {
-    const VERSION = '1.1.1';
+    const VERSION = '1.2.0';
     /**
+    * 1.2.0 - 2020-05-19
+    * fix: minor fixes
+    *
     * 1.1.1 - 2019-12-09
     * fix: minor fixes
     *
@@ -35,7 +38,11 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
 
     private $executeMode;
 
-
+    public function __construct()
+    {
+        $this->executeMode = OCI_COMMIT_ON_SUCCESS;
+        parent::__construct();
+    }
 
     public function beginTransaction()
     {
@@ -110,15 +117,15 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         $sqlCount = $this->renderCountSql();
         $sqlData  = $this->renderSelectSql();
 
-        $stt = $this->connection->parse($sqlTotal);
-        $this->connection->execute($stt);
+        $stt = $this->parse($sqlTotal);
+        $this->execute($stt);
         $res = oci_fetch_row($stt);
         $total = $res[0];
         $return['total'] = +$total;
 
         if ($total > 0) {
-            $stt = $this->connection->parse($sqlCount);
-            $this->connection->execute($stt);
+            $stt = $this->parse($sqlCount);
+            $this->execute($stt);
 
             $res = oci_fetch_row($stt);
             $count = $res[0];
@@ -386,7 +393,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         $fld = substr($fld, 0, -1);
 
         $sql = 'UPDATE ' . $this->model->getTableName() . " SET $fld WHERE $key";
-        $stt = $this->connection->parse($sql);
+        $stt = $this->parse($sql);
 
         foreach ($this->model->getFields() as $f) {
             $var  = Functions::toLowerCamelCase($f['name']);
@@ -396,7 +403,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
             @oci_bind_by_name($stt, ':' . $f['name'], $$var);
         }
 
-        $stt = $this->connection->execute($stt);
+        $stt = $this->execute($stt);
 
         if (oci_num_rows($stt) === 0) {
             throw new BadRequest('Não foi possível atualizar!');
