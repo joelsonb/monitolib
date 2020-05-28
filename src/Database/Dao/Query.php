@@ -676,6 +676,15 @@ class Query
             $sql = 'SELECT ' . $this->getSelectFields() . ' FROM ' . $this->model->getTableName() . $this->getWhereSql() . $this->getOrderBySql() . $this->getLimitSql();
         }
 
+        $page    = $this->getPage();
+        $perPage = $this->getPerPage();
+
+        if ($this->dbms === self::DB_ORACLE && $perPage > 0) {
+            $startRow = (($page - 1) * $perPage) + 1;
+            $endRow   = $perPage * $page;
+            $sql      = "SELECT {$this->getSelectFields(false, true)} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sql) a) WHERE rown_ BETWEEN $startRow AND $endRow";
+        }
+
         $this->reset();
 
         return $sql;
@@ -686,6 +695,7 @@ class Query
         $this->countCriteria = null;
         $this->fixedCriteria = null;
         $this->page          = 1;
+        $this->perPage       = 0;
         $this->sql           = null;
         $this->reseted       = true;
         return $this;

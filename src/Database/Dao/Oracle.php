@@ -192,9 +192,9 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         // Reset filter
         $this->reset();
 
-        if (oci_num_rows($stt) === 0) {
-            throw new BadRequest('Não foi possível deletar!');
-        }
+        // if (oci_num_rows($stt) === 0) {
+            // throw new BadRequest('Não foi possível deletar!');
+        // }
     }
     public function get($sql = null)
     {
@@ -286,17 +286,6 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
             $sql = $this->renderSelectSql();
         }
 
-        $page    = $this->getPage();
-        $perPage = $this->getPerPage();
-
-        if ($perPage > 0) {
-            $startRow = (($page - 1) * $perPage) + 1;
-            $endRow   = $perPage * $page;
-            $sql      = "SELECT {$this->getSelectFields(false, true)} FROM (SELECT a.*, ROWNUM as rown_ FROM ($sql) a) WHERE rown_ BETWEEN $startRow AND $endRow";
-        }
-
-        // \MonitoLib\Dev::e("$sql\n");
-
         $stt = $this->parse($sql);
         $this->execute($stt);
 
@@ -307,6 +296,7 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         }
 
         $stt = null;
+        $this->reset();
 
         return $data;
     }
