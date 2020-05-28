@@ -112,7 +112,8 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
     {
         $data   = [];
         $return = [];
-
+        
+        $perPage = $this->getPerPage();
         $sqlTotal = $this->renderCountSql(true);
         $sqlCount = $this->renderCountSql();
         $sqlData  = $this->renderSelectSql();
@@ -133,7 +134,6 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
 
             if ($count > 0) {
                 $page    = $this->getPage();
-                $perPage = $this->getPerPage();
                 $pages   = $perPage > 0 ? ceil($count / $perPage) : 1;
 
                 if ($page > $pages) {
