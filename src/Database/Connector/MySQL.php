@@ -14,8 +14,11 @@ use \MonitoLib\Exception\InternalError;
 
 class MySQL extends Connection
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
     /**
+    * 1.1.0 - 2020-07-21
+    * new: encrypted password
+    *
     * 1.0.0 - 2019-04-17
     * first versioned
     */

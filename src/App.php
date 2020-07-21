@@ -6,8 +6,11 @@ use \MonitoLib\Functions;
 
 class App
 {
-    const VERSION = '1.2.1';
+    const VERSION = '1.2.2';
     /**
+    * 1.2.2 - 2020-03-02
+    * new: env properties and methods
+    *
     * 1.2.1 - 2020-03-02
     * new: getRoutesPath
     *
@@ -24,6 +27,7 @@ class App
     const DS = DIRECTORY_SEPARATOR;
 
     static private $debug = 0;
+    static private $env = 'dev';
     static private $instance;
     static private $cachePath;
     static private $configPath;
@@ -63,7 +67,7 @@ class App
     }
     public static function getEnv()
     {
-        return 'dev';
+        return self::$env;
     }
     public static function getInstance ()
     {
@@ -230,6 +234,10 @@ class App
                 echo json_encode($return, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             }
         }
+    }
+    public static function setEnv($env)
+    {
+        self::$env = $env;
     }
     public static function setHasPrivileges ($hasPrivileges)
     {
