@@ -27,11 +27,13 @@ class Connection
 
 	public function __construct($d)
 	{
-		$this->database = $d->database;
-		$this->dbms     = $d->dbms;
-		$this->password = $d->password;
-		$this->server   = $d->server;
-		$this->user     = $d->user;
+		$this->name     = $d['name'];
+		$this->env      = $d['env'];
+		$this->database = $d['name'];
+		$this->dbms     = $d['dbms'];
+		$this->password = $d['password'];
+		$this->server   = $d['server'];
+		$this->user     = $d['user'];
 	}
 	public function getConnection()
 	{
@@ -51,6 +53,15 @@ class Connection
 		return $this->database;
 	}
 	/**
+	* getEnv
+	*
+	* @return $env
+	*/
+	public function getEnv()
+	{
+		return $this->env;
+	}
+	/**
 	* getDbms
 	*
 	* @return $dbms
@@ -58,6 +69,15 @@ class Connection
 	public function getDbms()
 	{
 		return $this->dbms;
+	}
+	/**
+	* getName
+	*
+	* @return $name
+	*/
+	public function getName()
+	{
+		return $this->name;
 	}
 	/**
 	* getPassword

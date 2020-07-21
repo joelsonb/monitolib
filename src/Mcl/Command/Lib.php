@@ -1,17 +1,17 @@
 <?php
-namespace MonitoMkr\Command;
+namespace MonitoLib\Mcl\Command;
 
 use \MonitoLib\Mcl\Command;
 use \MonitoLib\Mcl\Module;
 use \MonitoLib\Mcl\Option;
 use \MonitoLib\Mcl\Param;
 
-class Mkr extends Module
+class Lib extends Module
 {
     const VERSION = '1.0.0';
 
     protected $name = 'lib';
-    protected $help = 'Cria aplicações da MonitoLib';
+    protected $help = 'Configura a aplicação';
 
     public function setup()
     {
@@ -19,10 +19,10 @@ class Mkr extends Module
         $this->addCommand(
             new class extends Command
             {
-                protected $name   = 'list-connections';
-                protected $class  = '\MonitoMkr\cli\Connection';
-                protected $method = 'list';
-                protected $help   = 'Lista as conexões configuradas';
+                protected $name   = 'install';
+                protected $class  = '\MonitoLib\Mcl\Cli\Lib';
+                protected $method = 'install';
+                protected $help   = 'Inicializa a MonitoLib';
             }
         );
 

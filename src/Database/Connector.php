@@ -20,8 +20,9 @@ class Connector
     */
 	private static $instance;
 
-	private $connectionName;
-	private $connections = [];
+	private $active     = [];
+	private $configured = [];
+	private $default;
 
 	private function __construct()
 	{
@@ -31,27 +32,13 @@ class Connector
 			throw new InternalError("Arquivo $file não encontrado ou usuário sem permissão!");
 		}
 
-		$db = json_decode(file_get_contents($file));
+		$db = json_decode(file_get_contents($file), true);
 		
-		if (is_null($db)) {
-			throw new InternalError("O arquivo $file é inválido!");
+		if (empty($db)) {
+			throw new InternalError("Não existem conexões configuradas ou o arquivo $file é inválido!");
 		}
-		
-		$this->connections = new \stdClass;
 
-		if (!empty($db)) {
-			foreach ($db as $dk => $dv) {
-				if (!isset($dv->database)) {
-					$dv->database = null;
-				}
-
-				$class = '\MonitoLib\Database\Connector\\' . $dv->dbms;
-
-				$this->connections->$dk = new $class($dv);
-				// $this->connections->$dk->name     = $dk;
-				// $this->connections->$dk->instance = null;
-			}
-		}
+		$this->configured = $db;
 	}
 	/**
 	 * getInstance
@@ -61,55 +48,62 @@ class Connector
 	public static function getInstance()
 	{
 		if (!isset(self::$instance)) {
-			self::$instance = new \MonitoLib\Database\Connector;
+			self::$instance = new \MonitoLib\Database\Connector();
 		}
 
 		return self::$instance;
 	}
 	public function getConnection($connectionName = null)
 	{
-		if (empty($this->connections)) {
-			throw new InternalError('Não existem conexões configuradas!');
-		}
-
-		if (is_null($this->connectionName) && is_null($connectionName)) {
+		$connectionName = $connectionName ?? $this->default;
+		
+		if (is_null($connectionName)) {
 			throw new InternalError('Não existe uma conexão padrão e nenhuma conexão foi informada!');
 		}
 
-		if (is_null($connectionName)) {
-			$connectionName = $this->connectionName;
+		$p = explode('.', $connectionName);
+
+		$connection = $p[0];
+		$enviroment = $p[1] ?? App::getEnv();
+		$name = $connection . '.' . $enviroment;
+
+		// Retorna a conexão, se configurada
+		if (isset($this->active[$name])) {
+			return $this->active[$name];
 		}
 
-		if (!isset($this->connections->$connectionName)) {
-			throw new InternalError("A conexão $connectionName não existe!");
+		if (!isset($this->configured[$connection])) {
+			throw new InternalError("A conexão $connection não existe!");
 		}
 
-		// if (is_null($this->connections->$connectionName->instance)) {
-		// 	switch ($this->connections->$connectionName->dbms) {
-		// 		case 'MySQL':
-		// 			return \MonitoLib\Database\Connector\MySQL::connect($this->connections->$connectionName);
-		// 		case 'Oracle':
-		// 			return \MonitoLib\Database\Connector\Oracle::connect($this->connections->$connectionName);
-		// 		default:
-		// 			throw new InternalError('Driver de conexão inválido!');
-		// 	}
+		if (!isset($this->configured[$connection][$enviroment])) {
+			throw new InternalError("O ambiente $enviroment não está configurado na conexão $connection!");
+		}
 
-		// 	$this->dbms     = $this->connections->$connectionName->dbms;
-		// 	$this->server   = $this->connections->$connectionName->server;
-		// 	$this->user     = $this->connections->$connectionName->user;
-		// 	$this->database = $this->connections->$connectionName->database;
+		$params = $this->configured[$connection][$enviroment];
+		$params['name'] = $connection;
+		$params['env']  = $enviroment;
 
-		// 	$this->connections->$connectionName->instance = $obj;
-		// }
+		$dbms = $this->configured[$connection][$enviroment]['dbms'];
 
-		return $this->connections->$connectionName;
+		if ($dbms === 'Rest') {
+			return $params;
+		} else {
+			$class = '\MonitoLib\Database\Connector\\' . $dbms;
+
+			if (!class_exists($class)) {
+				throw new InternalError("Dbms $dbms inválido!");
+			}
+
+			return $this->active[$name] = new $class($params);
+		}
 	}
 	/**
 	 * getConnectionsList
 	 *
 	 * @return array Connections list
 	 */
-	public static function getConnectionsList ()
+	public static function getConnectionsList()
 	{
 		return self::$connections;
 	}
@@ -118,14 +112,21 @@ class Connector
 	 * 
 	 * @param string $connectionName Connection name
 	 */
-	public function setConnectionName ($connectionName)
+	public function setConnectionName($connectionName)
 	{
-		if (!isset($this->connections->$connectionName)) {
-			throw new InternalError("A conexão $connectionName não existe!");
-		}
+		$this->default = $connectionName;
 
-		// $this->dbms = $this->connections->$connectionName->dbms;
+		// $p = explode('.', $connectionName);
 
-		$this->connectionName = $connectionName;
+		// $connectionName = $p[0];
+		// $enviroment     = $p[1] ?? App::getEnv();
+
+		// if (!isset($this->connections->$connectionName->$enviroment)) {
+		// 	throw new InternalError("A conexão $connectionName não existe no ambiente $enviroment!");
+		// }
+
+		// // $this->dbms = $this->connections->$connectionName->dbms;
+
+		// $this->connectionName = $connectionName . '.' .  $enviroment;
 	}
 }

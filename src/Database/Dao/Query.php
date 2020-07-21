@@ -570,7 +570,7 @@ class Query
         return $this;
     }
     private function escape ($value) {
-        return str_replace(['\\', "\0", "\n", "\r", "'", '"', "\x1a"], ['\\\\', '\\0', '\\n', '\\r', "\\'", '\\"', '\\Z'], $value);
+        return str_replace(['\\', "\0", "\n", "\r", "'", "\x1a"], ['\\\\', '\\0', '\\n', '\\r', "''", '\\Z'], $value);
     }
     public function getModelFields () {
         if (is_null($this->modelFields)) {

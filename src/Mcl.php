@@ -38,6 +38,12 @@ class Mcl
 
         // Carrega o módulo
         switch ($module) {
+            case 'connection':
+                $this->module = new \MonitoLib\Mcl\Command\Connection();
+                break;
+            case 'lib':
+                $this->module = new \MonitoLib\Mcl\Command\Lib();
+                break;
             case 'mcl':
                 $this->loadMcl();
                 $this->module = new \MonitoLib\Command\Mcl();
@@ -136,10 +142,10 @@ class Mcl
 
         // \MonitoLib\Dev::pre($command->getOptions());
 
-        if (!is_null($command)) {
-            \MonitoLib\Dev::ee('aqui nao');
-            $this->loadCommand($command);
-        }
+        // if (!is_null($command)) {
+        //     \MonitoLib\Dev::ee('aqui nao');
+        //     $this->loadCommand($command);
+        // }
 
         if ($request->getOption('help')) {
             if (is_null($command)) {
@@ -199,9 +205,25 @@ class Mcl
     }
     private function loadModule($module)
     {
+        $file = App::getRoutesPath() . 'cli.php';
+
+        if (!file_exists($file)) {
+            throw new Exception('Não há arquivos de comandos!');
+        }
+
+        require_once $file;
+
+        // \MonitoLib\Dev::pre($commands);
+
+        // \MonitoLib\Dev::pre($file);
+
+        if (!isset($commands[$module])) {
+            throw new Exception('Módulo não existe!');
+        }
+
+        $this->module = new $commands[$module]();
 
 
-        // $file     = App::getRoutesPath() . 'routes.php';
         // $filename = App::getRoutesPath();
 
         // foreach ($uriParts as $part) {

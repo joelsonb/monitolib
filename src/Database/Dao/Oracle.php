@@ -118,6 +118,10 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         $sqlCount = $this->renderCountSql();
         $sqlData  = $this->renderSelectSql();
 
+        // \MonitoLib\Dev::e("$sqlTotal\n");
+        // \MonitoLib\Dev::e("$sqlCount\n");
+        // \MonitoLib\Dev::ee("$sqlData\n");
+
         $stt = $this->parse($sqlTotal);
         $this->execute($stt);
         $res = oci_fetch_row($stt);
@@ -149,6 +153,10 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
                 // Reset $sql
                 $this->reset();
 
+                // \MonitoLib\Dev::vd($count);
+                // \MonitoLib\Dev::vd($perPage);
+                // \MonitoLib\Dev::vde($pages);
+
                 $data = $this->setSql($sqlData)->list();
                 $return['data']  = $data;
                 $return['page']  = +$page;
@@ -165,26 +173,24 @@ class Oracle extends Base implements \MonitoLib\Database\Dao
         }
 
         if (empty($params)) {
-            throw new BadRequest('Não foram informados parâmetros para deletar!');
-        }
-        
-        $keys = $this->model->getPrimaryKeys();
+            // throw new BadRequest('Não foram informados parâmetros para deletar!');
+        } else {
+            $keys = $this->model->getPrimaryKeys();
 
-        if (count($params) !== count($keys)) {
-            throw new BadRequest('Invalid parameters number!');
-        }
+            if (count($params) !== count($keys)) {
+                throw new BadRequest('Invalid parameters number!');
+            }
 
-        foreach ($params as $p) {
-            foreach ($keys as $k) {
-                $this->andEqual($k, $p);
+            foreach ($params as $p) {
+                foreach ($keys as $k) {
+                    $this->andEqual($k, $p);
+                }
             }
         }
 
         $sql = $this->renderDeleteSql();
 
-
         // \MonitoLib\Dev::ee($sql);
-
 
         $stt = $this->parse($sql);
         $this->execute($stt);

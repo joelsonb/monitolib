@@ -54,12 +54,16 @@ class App
     public static function getDocumentRoot ()
     {
         if (PHP_SAPI === 'cli') {
-            $dr = substr(__DIR__, 0, strripos(__DIR__, 'vendor'));
+            $dr = substr(__DIR__, 0, strripos(__DIR__, 'vendor') - 1);
         } else {
             $dr = $_SERVER['DOCUMENT_ROOT'];
         }
 
         return $dr . self::DS;
+    }
+    public static function getEnv()
+    {
+        return 'dev';
     }
     public static function getInstance ()
     {
@@ -178,11 +182,16 @@ class App
                     }
                 }
 
+                $response = \MonitoLib\Response::getInstance();
+
                 $class    = $router->class;
                 $method   = $router->method;
                 $class    = new $class;
                 $return   = $class->$method(...$router->params);
-                $response = \MonitoLib\Response::getInstance();
+
+                if (!is_null($return)) {
+                    $response->setJson($response->toArray($return));
+                }
             }
         } catch (\MonitoLib\Exception\DatabaseError $e) {
             $return['error'] = $e->getMessage();
